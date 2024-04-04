@@ -20,7 +20,7 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun AddSubjectDiaglog(
     isOpen: Boolean,
-    title: String = "Thêm môn học",
+    title: String = "Thêm/Sửa môn học",
     subjectName: String,
     goalHours: String,
     onSubjectNameChange: (String) -> Unit,

@@ -11,41 +11,110 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.example.studyapp.presentation.components.AddSubjectDiaglog
 import com.example.studyapp.presentation.components.CountCard
+import com.example.studyapp.presentation.components.DeleteDiaglog
 import com.example.studyapp.presentation.components.studySessionsList
 import com.example.studyapp.presentation.components.tasksList
 import com.example.studyapp.sessions
 import com.example.studyapp.tasks
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SubjectScreen() {
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+    val listState = rememberLazyListState()
+    val isFABExpanded by remember { derivedStateOf { listState.firstVisibleItemIndex == 0 } }
+
+    var isEditSubjectDialogOpen by rememberSaveable { mutableStateOf(false) }
+    var isDeleteSubjectDialogOpen by rememberSaveable { mutableStateOf(false) }
+    var isDeleteSessionDialogOpen by rememberSaveable { mutableStateOf(false) }
+    var subjectName by remember { mutableStateOf("") }
+    var goalHours by remember { mutableStateOf("") }
+
+    AddSubjectDiaglog(
+        isOpen = isEditSubjectDialogOpen,
+        subjectName = subjectName,
+        goalHours = goalHours,
+        onSubjectNameChange = {subjectName = it},
+        onGoalHoursChange = {goalHours = it},
+        onDismissRequest = { isEditSubjectDialogOpen = false },
+        onConfirmButtonClick = {
+            isEditSubjectDialogOpen = false
+        }
+    )
+
+    DeleteDiaglog(
+        isOpen = isDeleteSubjectDialogOpen,
+        title = "Xoá môn học?",
+        bodyText = "Bạn có muốn môn học này? \nTất cả nhiệm vụ và phiên học liên quan sẽ bị xóa.",
+        onDismissRequest = { isDeleteSubjectDialogOpen = false },
+        onConfirmButtonClick = {isDeleteSubjectDialogOpen = false}
+    )
+
+    DeleteDiaglog(
+        isOpen = isDeleteSessionDialogOpen,
+        title = "Xoá phiên học tập?",
+        bodyText = "Bạn có muốn xóa phiên học này? \nThời gian đã học sẽ bị hủy.",
+        onDismissRequest = { isDeleteSessionDialogOpen = false },
+        onConfirmButtonClick = {isDeleteSessionDialogOpen = false}
+    )
+
     Scaffold(
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             SubjectScreenTopBar(
                 title = "Toán",
-                onBackButtonClick = { /*TODO*/ },
-                onDeleteButtonClick = { /*TODO*/ },
-                onEditButtonClick = {}
+                onBackButtonClick = { },
+                onDeleteButtonClick = { isDeleteSubjectDialogOpen = true },
+                onEditButtonClick = { isEditSubjectDialogOpen = true},
+                scrollBehavior = scrollBehavior
             )
+        },
+        floatingActionButton = {
+            if (isFABExpanded) {
+                ExtendedFloatingActionButton(
+                    onClick = { /*TODO*/ },
+                    icon = {
+                        Icon(
+                            imageVector = Icons.Default.Add,
+                            contentDescription = "Thêm nhiệm vụ"
+                        )
+                    },
+                    text = { Text("Thêm nhiệm vụ") },
+                    expanded = true
+                )
+            }
         }
     ) { paddingValue ->
         LazyColumn(
@@ -87,8 +156,11 @@ fun SubjectScreen() {
                 sectionTitle = "PHIÊN HỌC GẦN ĐÂY",
                 emptyListText = "Bạn không có phiên học tập nào gần đây.",
                 sessions = sessions,
-                onDeleteIconClick = {}
+                onDeleteIconClick = {isDeleteSessionDialogOpen = true}
             )
+            item {
+                Spacer(modifier = Modifier.height(80.dp))
+            }
         }
     }
 }
@@ -99,9 +171,11 @@ private fun SubjectScreenTopBar(
     title: String,
     onBackButtonClick: () -> Unit,
     onDeleteButtonClick: () -> Unit,
-    onEditButtonClick: () -> Unit
+    onEditButtonClick: () -> Unit,
+    scrollBehavior: TopAppBarScrollBehavior
 ) {
     LargeTopAppBar(
+        scrollBehavior = scrollBehavior,
         navigationIcon = {
             IconButton(onClick = onBackButtonClick) {
                 Icon(imageVector = Icons.Default.ArrowBack, contentDescription = "quay lại")

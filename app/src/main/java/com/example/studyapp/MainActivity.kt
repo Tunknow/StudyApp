@@ -7,7 +7,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import com.example.studyapp.domain.model.Session
 import com.example.studyapp.domain.model.Subject
 import com.example.studyapp.domain.model.Task
-import com.example.studyapp.presentation.subject.SubjectScreen
+import com.example.studyapp.presentation.task.TaskScreen
 import com.example.studyapp.presentation.theme.StudyAppTheme
 
 class MainActivity : ComponentActivity() {
@@ -94,7 +94,7 @@ class MainActivity : ComponentActivity() {
 //                        SetUpNavGraph(navController = navController, innerPadding = innerPadding)
 //                    }
 //                }
-                SubjectScreen()
+                TaskScreen()
             }
         }
     }
