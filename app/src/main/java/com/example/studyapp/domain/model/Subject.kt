@@ -1,7 +1,8 @@
 package com.example.studyapp.domain.model
 
 data class Subject(
-    val name: String,
-    val goalHours: Float,
-    val subjectId: Int
+    var id: String? = null,
+    var name: String,
+    var goalHours: Float,
+    var uid: String
 )

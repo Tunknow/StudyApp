@@ -72,3 +72,5 @@ val Blue = Color(0xFF2965C9)
 val Green = Color(0xFF1E9651)
 val Orange = Color(0xFFFF9800)
 
+val BgColor = Color(0xFFF7F8F8)
+

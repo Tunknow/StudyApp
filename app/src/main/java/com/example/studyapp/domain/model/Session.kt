@@ -1,9 +1,10 @@
 package com.example.studyapp.domain.model
 
 data class Session(
-    val sessionSubjectId: Int,
-    val relatedToSubject: String,
-    val date: Long,
-    val duration: Long,
-    val sessionId: Int
+    var id: String,
+    var sid: String,
+    var relatedToSubject: String = "",
+    var date: Long,
+    var duration: Long
+
 )

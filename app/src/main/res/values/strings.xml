@@ -1,3 +1,20 @@
 <resources>
     <string name="app_name">Study App</string>
+    <string name="nav_item1">Học tập</string>
+    <string name="nav_item2">Ghi chú</string>
+    <string name="nav_item3">Hồ sơ</string>
+    <string name="hello">Xin chào, </string>
+    <string name="create_account">Tạo tài khoản mới</string>
+    <string name="welcome">Vui lòng đăng nhập</string>
+    <string name="first_name">Họ</string>
+    <string name="last_name">Tên</string>
+    <string name="email">Email</string>
+    <string name="password">Mật khẩu</string>
+    <string name="hide_password">Ẩn mật khẩu</string>
+    <string name="show_password">Hiện mật khẩu</string>
+    <string name="login">Đăng nhập</string>
+    <string name="register">Đăng ký</string>
+    <string name="or">Or</string>
+    <string name="go_to_login">Đã có tài khoản? Đăng nhập</string>
+    <string name="forgot_password">Quên mật khẩu?</string>
 </resources>
