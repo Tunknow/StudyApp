@@ -13,6 +13,8 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -22,8 +24,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import com.example.studyapp.R
-import com.example.studyapp.presentation.auth.login.LoginUIEvent
-import com.example.studyapp.presentation.auth.login.LoginViewModel
 import com.example.studyapp.presentation.auth.components.ButtonComponent
 import com.example.studyapp.presentation.auth.components.ClickableLoginTextComponent
 import com.example.studyapp.presentation.auth.components.DividerTextComponent
@@ -32,6 +32,8 @@ import com.example.studyapp.presentation.auth.components.MyTextFieldComponent
 import com.example.studyapp.presentation.auth.components.NormalTextComponent
 import com.example.studyapp.presentation.auth.components.PasswordTextFieldComponent
 import com.example.studyapp.presentation.auth.components.UnderlinedTextComponent
+import com.example.studyapp.presentation.auth.login.LoginUIEvent
+import com.example.studyapp.presentation.auth.login.LoginViewModel
 import com.example.studyapp.presentation.navigation.Screens
 
 @Composable
@@ -39,6 +41,8 @@ fun LoginScreen(
     loginViewModel: LoginViewModel = viewModel(),
     navController: NavHostController
 ) {
+
+    val loginResult by loginViewModel.isLoginSuccess.collectAsState()
 
     Box(
         modifier = Modifier
@@ -102,7 +106,7 @@ fun LoginScreen(
         if(loginViewModel.loginInProgress.value) {
             CircularProgressIndicator()
         }
-        if (loginViewModel.isLoginSuccess.value) {
+        if (loginResult) {
             navController.navigate(Screens.StudyScreenRoute.route) {
                 popUpTo(Screens.LoginScreenRoute.route) { inclusive = true }
             }

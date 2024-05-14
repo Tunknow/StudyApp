@@ -50,6 +50,7 @@ fun SubjectCard(
                     text = subjectName,
                     style = MaterialTheme.typography.headlineMedium.copy(fontSize = 25.sp),
                     color = MaterialTheme.colorScheme.onTertiaryContainer,
+                    maxLines = 1
                 )
             }
         }

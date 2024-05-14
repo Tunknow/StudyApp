@@ -25,10 +25,12 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -42,6 +44,7 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
 import com.example.studyapp.presentation.navigation.Screens
 import com.example.studyapp.presentation.study.components.AddSubjectDiaglog
@@ -49,8 +52,8 @@ import com.example.studyapp.presentation.study.components.CountCard
 import com.example.studyapp.presentation.study.components.DeleteDiaglog
 import com.example.studyapp.presentation.study.components.studySessionsList
 import com.example.studyapp.presentation.study.components.tasksList
-import com.example.studyapp.sessions
-import com.example.studyapp.tasks
+import com.example.studyapp.util.SnackbarEvent
+import kotlinx.coroutines.flow.collectLatest
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -60,6 +63,8 @@ fun SubjectScreen(
 ) {
 
     val viewModel : SubjectViewModel = hiltViewModel()
+    val state by viewModel.state.collectAsStateWithLifecycle()
+    val onEvent : (SubjectScreenEvent) -> Unit = viewModel::onEvent
 
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     val listState = rememberLazyListState()
@@ -68,17 +73,36 @@ fun SubjectScreen(
     var isEditSubjectDialogOpen by rememberSaveable { mutableStateOf(false) }
     var isDeleteSubjectDialogOpen by rememberSaveable { mutableStateOf(false) }
     var isDeleteSessionDialogOpen by rememberSaveable { mutableStateOf(false) }
-    var subjectName by remember { mutableStateOf("") }
-    var goalHours by remember { mutableStateOf("") }
+
+    val snackbarHostState = remember { SnackbarHostState() }
+    val snackbarEvent = viewModel.snackbarEventFlow
+
+    LaunchedEffect(key1 = true) {
+        snackbarEvent.collectLatest { event ->
+            when (event) {
+                is SnackbarEvent.ShowSnackbar -> {
+                    snackbarHostState.showSnackbar(
+                        message = event.message,
+                        duration = event.duration
+                    )
+                }
+
+                SnackbarEvent.NavigateUp -> {
+                    navController.navigateUp()
+                }
+            }
+        }
+    }
 
     AddSubjectDiaglog(
         isOpen = isEditSubjectDialogOpen,
-        subjectName = subjectName,
-        goalHours = goalHours,
-        onSubjectNameChange = {subjectName = it},
-        onGoalHoursChange = {goalHours = it},
+        subjectName = state.subjectName,
+        goalHours = state.goalStudyHours,
+        onSubjectNameChange = {onEvent(SubjectScreenEvent.OnSubjectNameChange(it))},
+        onGoalHoursChange = {onEvent(SubjectScreenEvent.OnGoalStudyHoursChange(it))},
         onDismissRequest = { isEditSubjectDialogOpen = false },
         onConfirmButtonClick = {
+            onEvent(SubjectScreenEvent.UpdateSubject)
             isEditSubjectDialogOpen = false
         }
     )
@@ -88,7 +112,10 @@ fun SubjectScreen(
         title = "Xoá môn học?",
         bodyText = "Bạn có muốn môn học này? \nTất cả nhiệm vụ và phiên học liên quan sẽ bị xóa.",
         onDismissRequest = { isDeleteSubjectDialogOpen = false },
-        onConfirmButtonClick = {isDeleteSubjectDialogOpen = false}
+        onConfirmButtonClick = {
+            onEvent(SubjectScreenEvent.DeleteSubject)
+            isDeleteSubjectDialogOpen = false
+        }
     )
 
     DeleteDiaglog(
@@ -96,14 +123,17 @@ fun SubjectScreen(
         title = "Xoá phiên học tập?",
         bodyText = "Bạn có muốn xóa phiên học này? \nThời gian đã học sẽ bị hủy.",
         onDismissRequest = { isDeleteSessionDialogOpen = false },
-        onConfirmButtonClick = {isDeleteSessionDialogOpen = false}
+        onConfirmButtonClick = {
+            onEvent(SubjectScreenEvent.DeleteSession)
+            isDeleteSessionDialogOpen = false
+        }
     )
 
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             SubjectScreenTopBar(
-                title = "Toán",
+                title = state.subjectName,
                 onBackButtonClick = {navController.navigateUp()},
                 onDeleteButtonClick = { isDeleteSubjectDialogOpen = true },
                 onEditButtonClick = { isEditSubjectDialogOpen = true},
@@ -138,16 +168,16 @@ fun SubjectScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(12.dp),
-                    studiedHours = "10",
-                    goalHours = "15",
-                    progress = 0.75f
+                    studiedHours = state.studiedHours.toString(),
+                    goalHours = state.goalStudyHours,
+                    progress = state.progress
                 )
             }
             tasksList(
                 sectionTitle = "NHIỆM VỤ SẮP TỚI",
                 emptyListText = "Không có nhiệm vụ nào!",
-                tasks = tasks,
-                onCheckBoxClick = {},
+                tasks = state.upcomingTasks,
+                onCheckBoxClick = {onEvent(SubjectScreenEvent.OnTaskIsCompleteChange(it))},
                 onTaskCardClick = {taskId ->
                     navController.navigate(Screens.TaskScreenRoute.passTaskId(taskId = taskId))}
             )
@@ -157,8 +187,8 @@ fun SubjectScreen(
             tasksList(
                 sectionTitle = "NHIỆM VỤ HOÀN THÀNH",
                 emptyListText = "Không có nhiệm vụ nào!",
-                tasks = tasks,
-                onCheckBoxClick = {},
+                tasks = state.completedTasks,
+                onCheckBoxClick = {onEvent(SubjectScreenEvent.OnTaskIsCompleteChange(it))},
                 onTaskCardClick = {taskId ->
                     navController.navigate(Screens.TaskScreenRoute.passTaskId(taskId = taskId, subjectId = subjectId))}
             )
@@ -168,8 +198,11 @@ fun SubjectScreen(
             studySessionsList(
                 sectionTitle = "PHIÊN HỌC GẦN ĐÂY",
                 emptyListText = "Bạn không có phiên học tập nào gần đây.",
-                sessions = sessions,
-                onDeleteIconClick = {isDeleteSessionDialogOpen = true}
+                sessions = state.recentSessions,
+                onDeleteIconClick = {
+                    onEvent(SubjectScreenEvent.OnDeleteSessionButtonClick(it))
+                    isDeleteSessionDialogOpen = true
+                }
             )
             item {
                 Spacer(modifier = Modifier.height(80.dp))

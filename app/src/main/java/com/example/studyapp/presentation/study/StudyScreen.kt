@@ -24,10 +24,14 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -48,8 +52,8 @@ import com.example.studyapp.presentation.study.components.DeleteDiaglog
 import com.example.studyapp.presentation.study.components.SubjectCard
 import com.example.studyapp.presentation.study.components.studySessionsList
 import com.example.studyapp.presentation.study.components.tasksList
-import com.example.studyapp.sessions
-import com.example.studyapp.tasks
+import com.example.studyapp.util.SnackbarEvent
+import kotlinx.coroutines.flow.collectLatest
 
 @Composable
 fun StudyScreen(
@@ -57,12 +61,34 @@ fun StudyScreen(
 ) {
 
     val viewModel : StudyViewModel = hiltViewModel()
-    val state by viewModel.state.collectAsStateWithLifecycle()
+    val state by viewModel.studyScreenState;
     val onEvent : (StudyScreenEvent) -> Unit = viewModel::onEvent
+
+    val subjects by viewModel.subjects.collectAsStateWithLifecycle()
+    val tasks by viewModel.tasks.collectAsStateWithLifecycle()
+    val recentSession by viewModel.recentSession.collectAsStateWithLifecycle()
 
     var isAddSubjectDialogOpen by rememberSaveable { mutableStateOf(false) }
     var isDeleteSessionDialogOpen by rememberSaveable { mutableStateOf(false) }
 
+    val snackbarEventFlow = viewModel.snackbarEventFlow
+    val snackbarHostState = remember {
+        SnackbarHostState()
+    }
+
+    LaunchedEffect(key1 = true) {
+        snackbarEventFlow.collectLatest { event ->
+            when (event) {
+                SnackbarEvent.NavigateUp -> TODO()
+                is SnackbarEvent.ShowSnackbar -> {
+                    snackbarHostState.showSnackbar(
+                        message = event.message,
+                        duration = event.duration
+                    )
+                }
+            }
+        }
+    }
 
     AddSubjectDiaglog(
         isOpen = isAddSubjectDialogOpen,
@@ -89,6 +115,7 @@ fun StudyScreen(
     )
 
     Scaffold(
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = { StudyScreenTopBar()}
     ) {paddingValues ->
         LazyColumn(
@@ -108,7 +135,7 @@ fun StudyScreen(
             }
             item {
                 SubjectCardsSection(
-                    subjectList = state.subjects,
+                    subjectList = subjects,
                     onAddIconClick = {isAddSubjectDialogOpen = true},
                     onSubjectCardClick = { index ->
                         navController.navigate(Screens.SubjectScreenRoute.passSubjectId(index?: "")) },
@@ -147,7 +174,7 @@ fun StudyScreen(
             studySessionsList(
                 sectionTitle = "PHIÊN HỌC GẦN ĐÂY",
                 emptyListText = "Bạn không có phiên học tập nào gần đây.",
-                sessions = sessions,
+                sessions = recentSession,
                 onDeleteIconClick = {
                     onEvent(StudyScreenEvent.OnDeleteSessionButtonClick(it))
                     isDeleteSessionDialogOpen = true

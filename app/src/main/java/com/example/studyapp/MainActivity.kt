@@ -27,6 +27,16 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+
+
+
+
+
+
+
+
+
+
 val subjects = listOf(
     Subject(name = "Toán", goalHours = 10f, id = "a", uid = ""),
     Subject(name = "Tiếng Anh", goalHours = 10f, id = "b", uid = ""),
@@ -110,13 +120,6 @@ val tasks = listOf(
 
 val sessions = listOf(
     Session(
-        relatedToSubject = "Toán",
-        date = 0L,
-        duration = 2L,
-        sid = "",
-        id = "a"
-    ),
-    Session(
         relatedToSubject = "Tiếng Anh",
         date = 0L,
         duration = 2L,
@@ -124,14 +127,7 @@ val sessions = listOf(
         id = "b"
     ),
     Session(
-        relatedToSubject = "Vật lý",
-        date = 0L,
-        duration = 2L,
-        sid = "",
-        id = "c"
-    ),
-    Session(
-        relatedToSubject = "Hóa học",
+        relatedToSubject = "Tiếng Anh",
         date = 0L,
         duration = 2L,
         sid = "",

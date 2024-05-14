@@ -27,6 +27,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.studyapp.R
 import com.example.studyapp.domain.model.Session
+import com.example.studyapp.util.changeMillisToDateString
+import com.example.studyapp.util.toHours
 
 @OptIn(ExperimentalMaterial3Api::class)
 fun LazyListScope.studySessionsList(
@@ -137,13 +139,13 @@ private fun StudySessionCard(
                     style = MaterialTheme.typography.titleMedium,
                 )
                 Text(
-                    text = "${session.date}",
+                    text = "${session.date.changeMillisToDateString()}",
                     style = MaterialTheme.typography.bodySmall
                 )
             }
             Spacer(modifier = Modifier.weight(1f))
             Text(
-                text = "Đã học ${session.duration} giờ",
+                text = "Đã học ${session.duration.toHours()} giờ",
                 style = MaterialTheme.typography.bodySmall
             )
             IconButton(onClick = { onDeleteIconClick() }) {

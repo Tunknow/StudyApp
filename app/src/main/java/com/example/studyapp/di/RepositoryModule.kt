@@ -1,9 +1,13 @@
 package com.example.studyapp.di
 
+import com.example.studyapp.data.repositories.NoteRepository
 import com.example.studyapp.data.repositories.SessionRepository
 import com.example.studyapp.data.repositories.SubjectRepository
+import com.example.studyapp.data.repositories.TaskRepository
+import com.example.studyapp.data.repositories.impl.NoteRepositoryImpl
 import com.example.studyapp.data.repositories.impl.SessionRepositoryImpl
 import com.example.studyapp.data.repositories.impl.SubjectRepositoryImpl
+import com.example.studyapp.data.repositories.impl.TaskRepositoryImpl
 import com.google.firebase.firestore.FirebaseFirestore
 import dagger.Module
 import dagger.Provides
@@ -31,5 +35,23 @@ object RepositoryModule {
         @IoDispatcher ioDispatcher: CoroutineDispatcher
     ): SessionRepository {
         return SessionRepositoryImpl(firestore, ioDispatcher)
+    }
+
+    @Provides
+    @Singleton
+    fun provideTaskRepository(
+        firestore: FirebaseFirestore,
+        @IoDispatcher ioDispatcher: CoroutineDispatcher
+    ): TaskRepository {
+        return TaskRepositoryImpl(firestore, ioDispatcher)
+    }
+
+    @Provides
+    @Singleton
+    fun provideNoteRepository(
+        firestore: FirebaseFirestore,
+        @IoDispatcher ioDispatcher: CoroutineDispatcher
+    ): NoteRepository {
+        return NoteRepositoryImpl(firestore, ioDispatcher)
     }
 }

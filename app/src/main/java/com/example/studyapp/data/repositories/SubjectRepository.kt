@@ -5,11 +5,11 @@ import kotlinx.coroutines.flow.Flow
 
 interface SubjectRepository {
 
-    suspend fun upsertSubject(subject: Subject)
+    suspend fun insertSubject(subject: Subject) : String
+
+    suspend fun  updateSubject(subject: Subject)
 
     fun getTotalSubjectCount(): Flow<Int>
-
-    fun getTotalGoalHours(): Flow<Float>
 
     suspend fun deleteSubject(subjectId: String)
 

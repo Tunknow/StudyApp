@@ -4,7 +4,9 @@ import android.util.Log
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import com.example.studyapp.presentation.auth.rules.Validator
+import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
 
 class SignUpViewModel : ViewModel() {
 
@@ -104,15 +106,37 @@ class SignUpViewModel : ViewModel() {
             .addOnCompleteListener {
                 Log.d(TAG, "Inside_addOnCompleteListener")
                 Log.d(TAG, "${it.isSuccessful}")
-                signUpSuccess.value = it.isSuccessful
-                signUpInProgress.value = false
+
+                if(it.isSuccessful) {
+                    val firebaseUser = FirebaseAuth.getInstance().currentUser
+                    val userId = firebaseUser!!.uid
+                    val currentTime = Timestamp.now()
+                    Log.d(TAG, "Print UserID: $userId")
+                    val studyDb : FirebaseFirestore = FirebaseFirestore.getInstance()
+                    studyDb.collection(("users"))
+                        .document(userId)
+                        .set(
+                            hashMapOf(
+                                "first_name" to registrationUIState.value.firstName,
+                                "last_name" to registrationUIState.value.lastName,
+                                "email" to registrationUIState.value.email,
+                                "creat_at" to currentTime
+                            )
+                        )
+                        .addOnSuccessListener {
+                            Log.d(TAG, "Inside_addOnSuccessListener")
+                            signUpInProgress.value = false
+                            signUpSuccess.value = true
+                        }
+                }
             }
             .addOnFailureListener {
                 Log.d(TAG, "Inside_addOnFailureListener")
                 Log.d(TAG, "Exception = ${it.message}")
                 Log.d(TAG, "Exception = ${it.localizedMessage}")
             }
-    }
+
+        }
 
     fun logout() {
 

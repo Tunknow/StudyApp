@@ -1,13 +1,17 @@
 package com.example.studyapp.util
 
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.ui.graphics.Color
 import com.example.studyapp.presentation.theme.Green
 import com.example.studyapp.presentation.theme.Orange
 import com.example.studyapp.presentation.theme.Red
+import java.text.SimpleDateFormat
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.util.Date
+import java.util.Locale
 
 // Dinh nghia tap gia tri co dinh cho Priority
 enum class Priority(val title: String, val color: Color, val value: Int) {
@@ -37,5 +41,30 @@ sealed class Result<out T : Any> {
 
 fun Long.toHours(): Float {
     val hours = this.toFloat() / 3600f
-    return "%.2f".format(hours).toFloat()
+    val formattedHours = "%.2f".format(hours).replace(",", ".")
+    return formattedHours.toFloat()
+}
+
+sealed class SnackbarEvent {
+    data class ShowSnackbar(
+        val message: String,
+        val duration: SnackbarDuration = SnackbarDuration.Short
+    ) : SnackbarEvent()
+
+    data object NavigateUp: SnackbarEvent()
+}
+
+fun getCurrentTimeAsString(): String {
+    val currentTime = Date()
+    val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
+    val currentTimeString = dateFormat.format(currentTime)
+    return currentTimeString
+}
+
+fun convertDateFormat(dateString: String): String {
+    val currentDateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
+    val newDateFormat = SimpleDateFormat("EEEE MMMM yyyy, h:mma", Locale.getDefault())
+    val date = currentDateFormat.parse(dateString)
+    val newDateString = newDateFormat.format(date)
+    return newDateString
 }

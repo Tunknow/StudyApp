@@ -3,8 +3,11 @@ package com.example.studyapp.presentation.auth.login
 import android.util.Log
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
+import androidx.navigation.NavHostController
 import com.example.studyapp.presentation.auth.rules.Validator
+import com.example.studyapp.presentation.navigation.Screens
 import com.google.firebase.auth.FirebaseAuth
+import kotlinx.coroutines.flow.MutableStateFlow
 
 class LoginViewModel : ViewModel() {
 
@@ -16,7 +19,7 @@ class LoginViewModel : ViewModel() {
 
     var loginInProgress = mutableStateOf(false)
 
-    var isLoginSuccess = mutableStateOf(false)
+    val isLoginSuccess: MutableStateFlow<Boolean> = MutableStateFlow(false)
 
     var showInvalidLoginDialog = mutableStateOf(false)
 
@@ -87,5 +90,9 @@ class LoginViewModel : ViewModel() {
                 isLoginSuccess.value = false
                 showInvalidLoginDialog.value = true
             }
+    }
+
+    fun onLoginSuccess(navHostController: NavHostController) {
+        navHostController.navigate(Screens.StudyScreenRoute.route)
     }
 }
