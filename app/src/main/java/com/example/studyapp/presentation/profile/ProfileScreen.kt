@@ -22,6 +22,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -31,17 +32,21 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import com.example.studyapp.presentation.auth.components.ButtonComponent
 import com.example.studyapp.presentation.navigation.Screens
+import com.example.studyapp.util.changeMillisToDateString
 
 @Composable
 fun ProfileScreen(
-    profileViewModel: ProfileViewModel = viewModel(),
     navController: NavHostController
 ) {
+
+    val profileViewModel: ProfileViewModel = hiltViewModel()
+
+    val uiState = profileViewModel.state.collectAsState().value
 
     if (profileViewModel.isLogout.value) {
         navController.navigate(Screens.LoginScreenRoute.route) {
@@ -83,7 +88,7 @@ fun ProfileScreen(
                         )
                         Spacer(modifier = Modifier.height(20.dp))
                         Text(
-                            text = "Đào Quang Tùng",
+                            text = uiState.profile?.fullname ?: "Không xác định",
                             style = TextStyle(
                                 fontSize = 20.sp,
                                 fontWeight = FontWeight.Bold,
@@ -95,8 +100,8 @@ fun ProfileScreen(
                         Column(modifier = Modifier
                             .fillMaxWidth()
                             .padding(12.dp)) {
-                            UserInfoCard(info = "Email", infoDetail = "quangdt@gmail.com")
-                            UserInfoCard(info = "Ngày sinh", infoDetail = "20/05/2003")
+                            UserInfoCard(info = "Email", infoDetail = uiState.profile?.email ?: "Không xác định")
+                            UserInfoCard(info = "Ngày sinh", infoDetail = uiState.profile?.dob.changeMillisToDateString()  ?: "Không xác định")
                         }
 
                     }
@@ -104,9 +109,18 @@ fun ProfileScreen(
                 Spacer(modifier = Modifier.height(40.dp))
                 ButtonComponent(
 
+                    value = "Cập nhật hồ sơ",
+                    onButtonClicked = {
+                        navController.navigate(Screens.UpdateProfileScreenRoute.route)
+                    },
+                    isEnable = true
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                ButtonComponent(
+
                     value = "Đổi mật khẩu",
                     onButtonClicked = {
-                        profileViewModel.onEvent(ProfileUIEvent.LogoutButtonClicked)
+                        profileViewModel.sendEvent(event = ProfileUIEvent.ForgotPasswordClicked)
                     },
                     isEnable = true
                 )
@@ -114,7 +128,7 @@ fun ProfileScreen(
                 ButtonComponent(
                     value = "Đăng xuất",
                     onButtonClicked = {
-                        profileViewModel.onEvent(ProfileUIEvent.LogoutButtonClicked)
+                        profileViewModel.sendEvent(event = ProfileUIEvent.LogoutButtonClicked)
                     },
                     isEnable = true
                 )
@@ -140,7 +154,6 @@ private fun ProfileScreenTopBar() {
 @Composable
 fun ProfileScreenPreview() {
     val navController = rememberNavController()
-    ProfileScreen(ProfileViewModel(), navController)
 }
 
 @Composable

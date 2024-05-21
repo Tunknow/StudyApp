@@ -5,6 +5,7 @@ import com.example.studyapp.data.repositories.SubjectRepository
 import com.example.studyapp.di.IoDispatcher
 import com.example.studyapp.domain.model.Subject
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.CollectionReference
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.channels.awaitClose
@@ -101,13 +102,38 @@ class SubjectRepositoryImpl @Inject constructor(
 
     override suspend fun deleteSubject(subjectId: String) {
         try {
-            // Xóa tài liệu theo subjectId trong subcollection "subjects" của người dùng
-            studyAppDB.collection("users").document(userId)
-                .collection("subjects")
-                .document(subjectId)
-                .delete()
-                .await()
+            val subjectRef = studyAppDB.collection("users").document(userId).collection("subjects").document(subjectId)
 
+            // Xóa tất cả documents trong subcollection "tasks"
+            val tasksCollectionRef = subjectRef.collection("tasks")
+            deleteCollection(tasksCollectionRef, 100)
+
+            // Xóa tất cả documents trong subcollection "sessions"
+            val sessionsCollectionRef = subjectRef.collection("sessions")
+            deleteCollection(sessionsCollectionRef, 100)
+
+            // Cuối cùng xóa document subject
+            subjectRef.delete().await()
+
+        } catch (e: Exception) {
+            throw e
+        }
+    }
+
+    suspend fun deleteCollection(collectionRef: CollectionReference, batchSize: Long) {
+        try {
+            var query = collectionRef.limit(batchSize)
+            while (true) {
+                val snapshot = query.get().await()
+                if (snapshot.isEmpty) {
+                    break
+                }
+                val batch = collectionRef.firestore.batch()
+                for (document in snapshot.documents) {
+                    batch.delete(document.reference)
+                }
+                batch.commit().await()
+            }
         } catch (e: Exception) {
             throw e
         }

@@ -4,9 +4,11 @@ import com.example.studyapp.domain.model.Task
 import kotlinx.coroutines.flow.Flow
 
 interface TaskRepository {
-    suspend fun upsertTask(task: Task)
+    suspend fun insertTask(task: Task)
 
-    suspend fun deleteTask(taskId: String, subjectId: String)
+    suspend fun updateTask(task: Task)
+
+    suspend fun deleteTask(task: Task)
 
     suspend fun getTaskById(taskId: String, subjectId: String): Task?
 

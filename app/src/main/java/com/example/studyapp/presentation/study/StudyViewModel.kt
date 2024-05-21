@@ -62,7 +62,9 @@ class StudyViewModel @Inject constructor(
     val snackbarEventFlow = _snackbarEventFlow.asSharedFlow()
     fun onEvent(event: StudyScreenEvent) {
         when (event) {
-            StudyScreenEvent.DeleteSession -> TODO()
+            StudyScreenEvent.DeleteSession -> {
+                deleteSession()
+            }
             is StudyScreenEvent.OnDeleteSessionButtonClick -> {
                 studyScreenState.value = studyScreenState.value.copy(
                     session = event.session
@@ -81,12 +83,34 @@ class StudyViewModel @Inject constructor(
                 )
                 Log.d("SVM log", "subjectName: ${event.name}")
             }
-            is StudyScreenEvent.OnTaskIsCompleteChange -> TODO()
+            is StudyScreenEvent.OnTaskIsCompleteChange -> {
+                updateTask(event.task)
+            }
             StudyScreenEvent.SaveSubject -> {
                 saveSubject()
             }
         }
         updateUI()
+    }
+
+    private fun deleteSession() {
+        viewModelScope.launch {
+            try {
+                studyScreenState.value.session?.let {
+                    sessionRepository.deleteSession(it)
+                    _snackbarEventFlow.emit(
+                        SnackbarEvent.ShowSnackbar(message = "Session deleted successfully")
+                    )
+                }
+            } catch (e: Exception) {
+                _snackbarEventFlow.emit(
+                    SnackbarEvent.ShowSnackbar(
+                        message = "Couldn't delete session. ${e.message}",
+                        duration = SnackbarDuration.Long
+                    )
+                )
+            }
+        }
     }
 
     private fun updateUI() {
@@ -107,7 +131,23 @@ class StudyViewModel @Inject constructor(
 
 
     private fun updateTask(task: Task) {
-
+        viewModelScope.launch {
+            try {
+                taskRepository.updateTask(
+                    task = task.copy(isCompleted = !task.isCompleted)
+                )
+                _snackbarEventFlow.emit(
+                    SnackbarEvent.ShowSnackbar(message = "Nhiệm vụ cập nhật thành công")
+                )
+            } catch (e: Exception) {
+                _snackbarEventFlow.emit(
+                    SnackbarEvent.ShowSnackbar(
+                        "Không thể cập nhật. ${e.message}",
+                        SnackbarDuration.Long
+                    )
+                )
+            }
+        }
     }
 
     private fun saveSubject() {

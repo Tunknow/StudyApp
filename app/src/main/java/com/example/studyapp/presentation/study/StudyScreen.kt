@@ -164,8 +164,8 @@ fun StudyScreen(
                 emptyListText = "Không có nhiệm vụ nào!",
                 tasks = tasks,
                 onCheckBoxClick = {onEvent(StudyScreenEvent.OnTaskIsCompleteChange(it))},
-                onTaskCardClick = {taskId ->
-                    navController.navigate(Screens.TaskScreenRoute.passTaskId(taskId = taskId))
+                onTaskCardClick = {task ->
+                    navController.navigate(Screens.TaskScreenRoute.passTaskId(taskId = task.id, subjectId = task.sid))
                 }
             )
             item {

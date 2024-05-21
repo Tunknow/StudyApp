@@ -144,7 +144,7 @@ fun SubjectScreen(
             if (isFABExpanded) {
                 ExtendedFloatingActionButton(
                     onClick = {
-                              navController.navigate(Screens.TaskScreenRoute.passTaskId(subjectId = subjectId))
+                              navController.navigate(Screens.TaskScreenRoute.passTaskId(subjectId = state.currentSubjectId!!))
                     },
                     icon = {
                         Icon(
@@ -178,8 +178,8 @@ fun SubjectScreen(
                 emptyListText = "Không có nhiệm vụ nào!",
                 tasks = state.upcomingTasks,
                 onCheckBoxClick = {onEvent(SubjectScreenEvent.OnTaskIsCompleteChange(it))},
-                onTaskCardClick = {taskId ->
-                    navController.navigate(Screens.TaskScreenRoute.passTaskId(taskId = taskId))}
+                onTaskCardClick = {task ->
+                    navController.navigate(Screens.TaskScreenRoute.passTaskId(taskId = task.id, subjectId = task.sid))}
             )
             item {
                 Spacer(modifier = Modifier.height(20.dp))
@@ -189,8 +189,8 @@ fun SubjectScreen(
                 emptyListText = "Không có nhiệm vụ nào!",
                 tasks = state.completedTasks,
                 onCheckBoxClick = {onEvent(SubjectScreenEvent.OnTaskIsCompleteChange(it))},
-                onTaskCardClick = {taskId ->
-                    navController.navigate(Screens.TaskScreenRoute.passTaskId(taskId = taskId, subjectId = subjectId))}
+                onTaskCardClick = {task ->
+                    navController.navigate(Screens.TaskScreenRoute.passTaskId(taskId = task.id, subjectId = task.sid))}
             )
             item {
                 Spacer(modifier = Modifier.height(20.dp))

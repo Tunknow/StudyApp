@@ -19,7 +19,7 @@ class TaskRepositoryImpl @Inject constructor(
 ): TaskRepository {
 
     val userId = FirebaseAuth.getInstance().currentUser!!.uid
-    override suspend fun upsertTask(task: Task) {
+    override suspend fun insertTask(task: Task) {
         // Tạo một HashMap chứa dữ liệu của task
         val taskData = hashMapOf(
             "title" to task.title,
@@ -45,28 +45,43 @@ class TaskRepositoryImpl @Inject constructor(
             }
     }
 
-    override suspend fun deleteTask(taskId: String, subjectId: String) {
-        // Xóa tài liệu task dựa trên taskId
-        studyAppDB.collection("users").document(userId)
-            .collection("subjects").document(subjectId)
+    override suspend fun updateTask(task: Task) {
+        // Tạo một HashMap chứa dữ liệu của task
+        val taskData = mapOf(
+            "title" to task.title,
+            "description" to task.description,
+            "dueDate" to task.dueDate,
+            "priority" to task.priority,
+            "isCompleted" to task.isCompleted
+        )
+
+        // Cập nhật dữ liệu của task trong collection "tasks" của môn học hiện tại
+        studyAppDB.collection("users").document(userId).collection("subjects").document(task.sid)
             .collection("tasks")
-            .document(taskId)
+            .document(task.id)
+            .update(taskData)
+            .addOnSuccessListener {
+                Log.d("TaskRepositoryImpl", "Task updated with ID: ${task.id}")
+            }
+            .addOnFailureListener { exception ->
+                // Xử lý nếu có lỗi xảy ra khi cập nhật tài liệu
+                Log.w("TaskRepositoryImpl", "Error updating task", exception)
+            }
+    }
+
+    override suspend fun deleteTask(task: Task) {
+        // Xóa tài liệu task dựa trên taskId
+        studyAppDB.collection("users").document(userId).collection("subjects").document(task.sid)
+            .collection("tasks")
+            .document(task.id)
             .delete()
             .await()
     }
 
     override suspend fun getTaskById(taskId: String, subjectId: String): Task? {
         return try {
-            val subjectName = studyAppDB.collection("users").document(userId)
-                .collection("subjects")
-                .document(subjectId)
-                .get()
-                .await()
-                .getString("name") ?: ""
             // Thực hiện truy vấn Firestore để lấy tài liệu task dựa trên taskId
-            val taskDocument = studyAppDB.collection("users").document(userId)
-                .collection("subjects")
-                .document(subjectId)
+            val taskDocument = studyAppDB.collection("users").document(userId).collection("subjects").document(subjectId)
                 .collection("tasks")
                 .document(taskId)
                 .get()
@@ -81,7 +96,7 @@ class TaskRepositoryImpl @Inject constructor(
                 val dueDate = taskDocument.getLong("dueDate") ?: 0
                 val isCompleted = taskDocument.getBoolean("isCompleted") ?: false
 
-                Task(taskId, subjectId, title, description, dueDate, priority, subjectName, isCompleted)
+                Task(taskId, "", title, description, dueDate, priority, "", isCompleted)
             } else {
                 // Nếu tài liệu không tồn tại, trả về null
                 null

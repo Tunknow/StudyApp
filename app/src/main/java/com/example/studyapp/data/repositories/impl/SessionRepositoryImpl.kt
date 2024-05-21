@@ -36,6 +36,9 @@ class SessionRepositoryImpl @Inject constructor(
             .collection("subjects").document(session.sid)
             .collection("sessions").document(session.id)
             .delete()
+            .addOnSuccessListener {
+                Log.d("SRI log", "deleteSession: Success")
+            }
     }
 
     override fun getAllSessions(): Flow<List<Session>> = callbackFlow {val sessionsList = mutableListOf<Session>() // Danh sách các phiên

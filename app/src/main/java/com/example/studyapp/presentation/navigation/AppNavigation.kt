@@ -1,5 +1,6 @@
 package com.example.studyapp.presentation.navigation
 
+import android.content.Intent
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DateRange
@@ -22,10 +23,12 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import androidx.navigation.navDeepLink
 import com.example.studyapp.presentation.auth.LoginScreen
 import com.example.studyapp.presentation.auth.SignUpScreen
 import com.example.studyapp.presentation.note.NoteScreen
 import com.example.studyapp.presentation.profile.ProfileScreen
+import com.example.studyapp.presentation.profile.update.UpdateProfileScreen
 import com.example.studyapp.presentation.study.StudyScreen
 import com.example.studyapp.presentation.study.session.SessionScreen
 import com.example.studyapp.presentation.study.subject.SubjectScreen
@@ -103,8 +106,19 @@ fun AppNavigation() {
                     navController = navController
                 )
             }
-            composable(Screens.SessionScreenRoute.route) {
+            composable(
+                Screens.SessionScreenRoute.route,
+                deepLinks = listOf(
+                    navDeepLink {
+                        action = Intent.ACTION_VIEW
+                        uriPattern = "studyapp://study/session"
+                    }
+                )
+            ) {
                 SessionScreen(navController = navController)
+            }
+            composable(Screens.UpdateProfileScreenRoute.route) {
+                UpdateProfileScreen(navController = navController)
             }
         }
     }

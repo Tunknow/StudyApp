@@ -24,5 +24,5 @@ sealed class Screens(val route: String) {
             return "Subject/$subjectId"
         }
     }
-
+    object UpdateProfileScreenRoute: Screens(route = "UpdateProfile")
 }

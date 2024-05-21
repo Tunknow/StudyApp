@@ -68,3 +68,7 @@ fun convertDateFormat(dateString: String): String {
     val newDateString = newDateFormat.format(date)
     return newDateString
 }
+
+fun Int.pad(): String {
+    return this.toString().padStart(length = 2, padChar = '0')
+}

@@ -56,6 +56,8 @@ class SubjectViewModel @Inject constructor(
         initialValue = SubjectScreenState()
     )
 
+
+
     private val _snackbarEventFlow = MutableSharedFlow<SnackbarEvent>()
     val snackbarEventFlow = _snackbarEventFlow.asSharedFlow()
 
@@ -91,6 +93,12 @@ class SubjectViewModel @Inject constructor(
                 }
             }
             is SubjectScreenEvent.OnTaskIsCompleteChange -> {
+                _state.update { currentState ->
+                    currentState.copy(
+                        upcomingTasks = currentState.upcomingTasks.filter { task -> task.id != event.task.id },
+                        completedTasks = currentState.completedTasks + event.task.copy(isCompleted = !event.task.isCompleted)
+                    )
+                }
                 updateTask(event.task)
             }
 
@@ -203,7 +211,7 @@ class SubjectViewModel @Inject constructor(
     private fun updateTask(task: Task) {
         viewModelScope.launch {
             try {
-                taskRepository.upsertTask(
+                taskRepository.updateTask(
                     task = task.copy(isCompleted = !task.isCompleted)
                 )
                 if (task.isCompleted) {

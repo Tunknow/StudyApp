@@ -1,9 +1,7 @@
 package com.example.studyapp.presentation.profile
 
-import java.util.Date
+import com.example.studyapp.domain.model.ProfileUser
 
-class ProfileUIState {
-    var fullName: String = ""
-    var emailUser: String = ""
-    var dob: Date = Date("20/05/2003")
-}
+data class ProfileUIState(
+    val profile: ProfileUser? = null
+)
