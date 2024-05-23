@@ -99,13 +99,13 @@ class StudyViewModel @Inject constructor(
                 studyScreenState.value.session?.let {
                     sessionRepository.deleteSession(it)
                     _snackbarEventFlow.emit(
-                        SnackbarEvent.ShowSnackbar(message = "Session deleted successfully")
+                        SnackbarEvent.ShowSnackbar(message = "Xóa phiên học thành công")
                     )
                 }
             } catch (e: Exception) {
                 _snackbarEventFlow.emit(
                     SnackbarEvent.ShowSnackbar(
-                        message = "Couldn't delete session. ${e.message}",
+                        message = "Không thể xóa phiên. ${e.message}",
                         duration = SnackbarDuration.Long
                     )
                 )

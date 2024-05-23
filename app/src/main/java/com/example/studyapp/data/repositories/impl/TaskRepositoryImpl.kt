@@ -108,54 +108,58 @@ class TaskRepositoryImpl @Inject constructor(
         }
     }
 
-    override fun getUpcomingTasksForSubject(subjectId: String): Flow<List<Task>> = callbackFlow {
-        val taskList = mutableListOf<Task>()
-        val subjectName = studyAppDB.collection("users").document(userId)
-            .collection("subjects")
-            .document(subjectId)
-            .get()
-            .await()
-            .getString("name") ?: ""
-        val tasksQuerySnapshot = studyAppDB.collection("users").document(userId)
-            .collection("subjects").document(subjectId)
-            .collection("tasks")
-            .get()
-            .await()
-        tasksQuerySnapshot.documents.forEach { taskDocument ->
-            val taskId = taskDocument.id
-            val taskTitle = taskDocument.getString("title") ?: ""
-            val taskDescription = taskDocument.getString("description") ?: ""
-            val taskDueDate = taskDocument.getLong("dueDate") ?: 0
-            val taskPriority = taskDocument.getLong("priority")?.toInt() ?: 0
-            val taskCompleted = taskDocument.getBoolean("isCompleted") ?: false
+//    Test-------------------------------------------------------
+override fun getUpcomingTasksForSubject(subjectId: String): Flow<List<Task>> = callbackFlow {
+    val taskList = mutableListOf<Task>()
+    val subjectName = studyAppDB.collection("users").document(userId)
+        .collection("subjects")
+        .document(subjectId)
+        .get()
+        .await()
+        .getString("name") ?: ""
 
-            // Tạo đối tượng Task từ dữ liệu đọc được
-            val task = Task(
-                taskId,
-                subjectId, // SubjectId được truyền từ tham số
-                taskTitle,
-                taskDescription,
-                taskDueDate,
-                taskPriority,
-                subjectName,
-                taskCompleted
-            )
+    val tasksCollectionRef = studyAppDB.collection("users").document(userId)
+        .collection("subjects").document(subjectId)
+        .collection("tasks")
 
-            // Thêm task vào danh sách nếu chưa hoàn thành
-            if (!taskCompleted) {
-                taskList.add(task)
+    // Lắng nghe sự thay đổi của dữ liệu
+    val listener = tasksCollectionRef.addSnapshotListener { tasksQuerySnapshot, _ ->
+        tasksQuerySnapshot?.let {
+            taskList.clear() // Xóa danh sách cũ để cập nhật dữ liệu mới
+            it.documents.forEach { taskDocument ->
+                val taskId = taskDocument.id
+                val taskTitle = taskDocument.getString("title") ?: ""
+                val taskDescription = taskDocument.getString("description") ?: ""
+                val taskDueDate = taskDocument.getLong("dueDate") ?: 0
+                val taskPriority = taskDocument.getLong("priority")?.toInt() ?: 0
+                val taskCompleted = taskDocument.getBoolean("isCompleted") ?: false
+
+                val task = Task(
+                    taskId,
+                    subjectId,
+                    taskTitle,
+                    taskDescription,
+                    taskDueDate,
+                    taskPriority,
+                    subjectName,
+                    taskCompleted
+                )
+
+                if (!taskCompleted) {
+                    taskList.add(task)
+                }
             }
+
+            val sortedTasks = taskList.sortedBy { it.dueDate }
+            trySend(sortedTasks).isSuccess
         }
-
-        // Sắp xếp danh sách taskList theo dueDate
-        val sortedTasks = taskList.sortedBy { it.dueDate }
-
-        // Gửi danh sách taskList đã sắp xếp qua luồng
-        trySend(sortedTasks).isSuccess
-
-        // Đóng luồng khi không cần thiết nữa
-        awaitClose { }
     }
+
+    awaitClose {
+        // Hủy lắng nghe khi không cần thiết nữa
+        listener.remove()
+    }
+}
 
     override fun getCompletedTasksForSubject(subjectId: String): Flow<List<Task>> = callbackFlow {
         val taskList = mutableListOf<Task>()
@@ -165,108 +169,272 @@ class TaskRepositoryImpl @Inject constructor(
             .get()
             .await()
             .getString("name") ?: ""
-        val tasksQuerySnapshot = studyAppDB.collection("users").document(userId)
+
+        val tasksCollectionRef = studyAppDB.collection("users").document(userId)
             .collection("subjects").document(subjectId)
             .collection("tasks")
-            .get()
-            .await()
-        tasksQuerySnapshot.documents.forEach { taskDocument ->
-            val taskId = taskDocument.id
-            val taskTitle = taskDocument.getString("title") ?: ""
-            val taskDescription = taskDocument.getString("description") ?: ""
-            val taskDueDate = taskDocument.getLong("dueDate") ?: 0
-            val taskPriority = taskDocument.getLong("priority")?.toInt() ?: 0
-            val taskCompleted = taskDocument.getBoolean("isCompleted") ?: false
 
-            // Tạo đối tượng Task từ dữ liệu đọc được
-            val task = Task(
-                taskId,
-                subjectId, // SubjectId được truyền từ tham số
-                taskTitle,
-                taskDescription,
-                taskDueDate,
-                taskPriority,
-                subjectName,
-                taskCompleted
-            )
+        // Lắng nghe sự thay đổi của dữ liệu
+        val listener = tasksCollectionRef.addSnapshotListener { tasksQuerySnapshot, _ ->
+            tasksQuerySnapshot?.let {
+                taskList.clear() // Xóa danh sách cũ để cập nhật dữ liệu mới
+                it.documents.forEach { taskDocument ->
+                    val taskId = taskDocument.id
+                    val taskTitle = taskDocument.getString("title") ?: ""
+                    val taskDescription = taskDocument.getString("description") ?: ""
+                    val taskDueDate = taskDocument.getLong("dueDate") ?: 0
+                    val taskPriority = taskDocument.getLong("priority")?.toInt() ?: 0
+                    val taskCompleted = taskDocument.getBoolean("isCompleted") ?: false
 
-            // Thêm task vào danh sách nếu chưa hoàn thành
-            if (taskCompleted) {
-                taskList.add(task)
+                    val task = Task(
+                        taskId,
+                        subjectId,
+                        taskTitle,
+                        taskDescription,
+                        taskDueDate,
+                        taskPriority,
+                        subjectName,
+                        taskCompleted
+                    )
+
+                    if (taskCompleted) {
+                        taskList.add(task)
+                    }
+                }
+
+                trySend(taskList).isSuccess
             }
         }
 
-        // Gửi danh sách taskList đã sắp xếp qua luồng
-        trySend(taskList).isSuccess
-
-        // Đóng luồng khi không cần thiết nữa
-        awaitClose { }
+        awaitClose {
+            // Hủy lắng nghe khi không cần thiết nữa
+            listener.remove()
+        }
     }
 
+    // Test--------------------------------------------------
 
+//    override fun getUpcomingTasksForSubject(subjectId: String): Flow<List<Task>> = callbackFlow {
+//        val taskList = mutableListOf<Task>()
+//        val subjectName = studyAppDB.collection("users").document(userId)
+//            .collection("subjects")
+//            .document(subjectId)
+//            .get()
+//            .await()
+//            .getString("name") ?: ""
+//        val tasksQuerySnapshot = studyAppDB.collection("users").document(userId)
+//            .collection("subjects").document(subjectId)
+//            .collection("tasks")
+//            .get()
+//            .await()
+//        tasksQuerySnapshot.documents.forEach { taskDocument ->
+//            val taskId = taskDocument.id
+//            val taskTitle = taskDocument.getString("title") ?: ""
+//            val taskDescription = taskDocument.getString("description") ?: ""
+//            val taskDueDate = taskDocument.getLong("dueDate") ?: 0
+//            val taskPriority = taskDocument.getLong("priority")?.toInt() ?: 0
+//            val taskCompleted = taskDocument.getBoolean("isCompleted") ?: false
+//
+//            // Tạo đối tượng Task từ dữ liệu đọc được
+//            val task = Task(
+//                taskId,
+//                subjectId, // SubjectId được truyền từ tham số
+//                taskTitle,
+//                taskDescription,
+//                taskDueDate,
+//                taskPriority,
+//                subjectName,
+//                taskCompleted
+//            )
+//
+//            // Thêm task vào danh sách nếu chưa hoàn thành
+//            if (!taskCompleted) {
+//                taskList.add(task)
+//            }
+//        }
+//
+//        // Sắp xếp danh sách taskList theo dueDate
+//        val sortedTasks = taskList.sortedBy { it.dueDate }
+//
+//        // Gửi danh sách taskList đã sắp xếp qua luồng
+//        trySend(sortedTasks).isSuccess
+//
+//        // Đóng luồng khi không cần thiết nữa
+//        awaitClose { }
+//    }
+//
+//
+//
+//    override fun getCompletedTasksForSubject(subjectId: String): Flow<List<Task>> = callbackFlow {
+//        val taskList = mutableListOf<Task>()
+//        val subjectName = studyAppDB.collection("users").document(userId)
+//            .collection("subjects")
+//            .document(subjectId)
+//            .get()
+//            .await()
+//            .getString("name") ?: ""
+//        val tasksQuerySnapshot = studyAppDB.collection("users").document(userId)
+//            .collection("subjects").document(subjectId)
+//            .collection("tasks")
+//            .get()
+//            .await()
+//        tasksQuerySnapshot.documents.forEach { taskDocument ->
+//            val taskId = taskDocument.id
+//            val taskTitle = taskDocument.getString("title") ?: ""
+//            val taskDescription = taskDocument.getString("description") ?: ""
+//            val taskDueDate = taskDocument.getLong("dueDate") ?: 0
+//            val taskPriority = taskDocument.getLong("priority")?.toInt() ?: 0
+//            val taskCompleted = taskDocument.getBoolean("isCompleted") ?: false
+//
+//            // Tạo đối tượng Task từ dữ liệu đọc được
+//            val task = Task(
+//                taskId,
+//                subjectId, // SubjectId được truyền từ tham số
+//                taskTitle,
+//                taskDescription,
+//                taskDueDate,
+//                taskPriority,
+//                subjectName,
+//                taskCompleted
+//            )
+//
+//            // Thêm task vào danh sách nếu chưa hoàn thành
+//            if (taskCompleted) {
+//                taskList.add(task)
+//            }
+//        }
+//
+//        // Gửi danh sách taskList đã sắp xếp qua luồng
+//        trySend(taskList).isSuccess
+//
+//        // Đóng luồng khi không cần thiết nữa
+//        awaitClose { }
+//    }
+
+
+
+//    override fun getAllUpcomingTasks(): Flow<List<Task>> = callbackFlow {
+//        val tasksList = mutableListOf<Task>()
+//
+//        // Lấy danh sách tất cả các môn học của người dùng từ Firestore
+//        studyAppDB.collection("users").document(userId)
+//            .collection("subjects")
+//            .get()
+//            .addOnSuccessListener { subjectsQuerySnapshot ->
+//                // Duyệt qua từng môn học
+//                subjectsQuerySnapshot.documents.forEach { subjectDocument ->
+//                    val subjectId = subjectDocument.id
+//                    val subjectName = subjectDocument.getString("name") ?: "";
+//
+//                    // Lấy danh sách các task của môn học hiện tại từ Firestore
+//                    studyAppDB.collection("users").document(userId)
+//                        .collection("subjects").document(subjectId)
+//                        .collection("tasks")
+//                        .get()
+//                        .addOnSuccessListener { tasksQuerySnapshot ->
+//                            // Duyệt qua từng task của môn học hiện tại
+//                            tasksQuerySnapshot.documents.forEach { taskDocument ->
+//                                // Đọc dữ liệu của task từ Firestore
+//                                val taskId = taskDocument.id
+//                                val taskSid = subjectId
+//                                val taskTitle = taskDocument.getString("title") ?: ""
+//                                val taskDescription = taskDocument.getString("description") ?: ""
+//                                val taskDueDate = taskDocument.getLong("dueDate") ?: 0
+//                                val taskPriority = taskDocument.getLong("priority")?.toInt() ?: 0
+//                                val taskCompleted = taskDocument.getBoolean("isCompleted") ?: false
+//                                val taskRelatedToSubject = subjectName
+//
+//
+//                                // Tạo đối tượng Task và thêm vào danh sách tasksList
+//                                val task = Task(
+//                                    taskId,
+//                                    taskSid,
+//                                    taskTitle,
+//                                    taskDescription,
+//                                    taskDueDate,
+//                                    taskPriority,
+//                                    taskRelatedToSubject,
+//                                    taskCompleted
+//                                )
+//                                tasksList.add(task)
+//                            }
+//                            val filteredTasks = tasksList.filter { !it.isCompleted }
+//                            val sortedTasks = filteredTasks.sortedWith(compareBy<Task> { it.dueDate }.thenByDescending { it.priority })
+//
+//                            // Gửi danh sách tasksList qua luồng
+//                            trySend(sortedTasks).isSuccess
+//                        }
+//                        .addOnFailureListener { exception ->
+//                            // Xử lý nếu có lỗi xảy ra khi lấy danh sách tasks của môn học
+//                            close(exception)
+//                        }
+//                }
+//            }
+//            .addOnFailureListener { exception ->
+//                // Xử lý nếu có lỗi xảy ra khi lấy danh sách các môn học
+//                close(exception)
+//            }
+//
+//        // Đóng luồng khi không cần thiết nữa
+//        awaitClose { }
+//    }
     override fun getAllUpcomingTasks(): Flow<List<Task>> = callbackFlow {
         val tasksList = mutableListOf<Task>()
 
-        // Lấy danh sách tất cả các môn học của người dùng từ Firestore
-        studyAppDB.collection("users").document(userId)
+        // Lắng nghe sự thay đổi của tất cả các môn học của người dùng
+        val subjectsListener = studyAppDB.collection("users").document(userId)
             .collection("subjects")
-            .get()
-            .addOnSuccessListener { subjectsQuerySnapshot ->
-                // Duyệt qua từng môn học
-                subjectsQuerySnapshot.documents.forEach { subjectDocument ->
-                    val subjectId = subjectDocument.id
-                    val subjectName = subjectDocument.getString("name") ?: "";
+            .addSnapshotListener { subjectsQuerySnapshot, subjectsException ->
+                subjectsException?.let { close(it) } // Đóng luồng nếu có lỗi xảy ra khi lấy danh sách các môn học
+                subjectsQuerySnapshot?.let { subjectsSnapshot ->
+                    subjectsSnapshot.documents.forEach { subjectDocument ->
+                        val subjectId = subjectDocument.id
+                        val subjectName = subjectDocument.getString("name") ?: ""
 
-                    // Lấy danh sách các task của môn học hiện tại từ Firestore
-                    studyAppDB.collection("users").document(userId)
-                        .collection("subjects").document(subjectId)
-                        .collection("tasks")
-                        .get()
-                        .addOnSuccessListener { tasksQuerySnapshot ->
-                            // Duyệt qua từng task của môn học hiện tại
-                            tasksQuerySnapshot.documents.forEach { taskDocument ->
-                                // Đọc dữ liệu của task từ Firestore
-                                val taskId = taskDocument.id
-                                val taskSid = subjectId
-                                val taskTitle = taskDocument.getString("title") ?: ""
-                                val taskDescription = taskDocument.getString("description") ?: ""
-                                val taskDueDate = taskDocument.getLong("dueDate") ?: 0
-                                val taskPriority = taskDocument.getLong("priority")?.toInt() ?: 0
-                                val taskCompleted = taskDocument.getBoolean("isCompleted") ?: false
-                                val taskRelatedToSubject = subjectName
+                        // Lắng nghe sự thay đổi của tất cả các task trong mỗi môn học
+                        val tasksListener = studyAppDB.collection("users").document(userId)
+                            .collection("subjects").document(subjectId)
+                            .collection("tasks")
+                            .addSnapshotListener { tasksQuerySnapshot, tasksException ->
+                                tasksException?.let { close(it) } // Đóng luồng nếu có lỗi xảy ra khi lấy danh sách các task
+                                tasksQuerySnapshot?.let { tasksSnapshot ->
+                                    tasksList.clear() // Xóa danh sách cũ để cập nhật dữ liệu mới
+                                    tasksSnapshot.documents.forEach { taskDocument ->
+                                        val taskId = taskDocument.id
+                                        val taskSid = subjectId
+                                        val taskTitle = taskDocument.getString("title") ?: ""
+                                        val taskDescription = taskDocument.getString("description") ?: ""
+                                        val taskDueDate = taskDocument.getLong("dueDate") ?: 0
+                                        val taskPriority = taskDocument.getLong("priority")?.toInt() ?: 0
+                                        val taskCompleted = taskDocument.getBoolean("isCompleted") ?: false
+                                        val taskRelatedToSubject = subjectName
 
-
-                                // Tạo đối tượng Task và thêm vào danh sách tasksList
-                                val task = Task(
-                                    taskId,
-                                    taskSid,
-                                    taskTitle,
-                                    taskDescription,
-                                    taskDueDate,
-                                    taskPriority,
-                                    taskRelatedToSubject,
-                                    taskCompleted
-                                )
-                                tasksList.add(task)
+                                        val task = Task(
+                                            taskId,
+                                            taskSid,
+                                            taskTitle,
+                                            taskDescription,
+                                            taskDueDate,
+                                            taskPriority,
+                                            taskRelatedToSubject,
+                                            taskCompleted
+                                        )
+                                        if (!taskCompleted) {
+                                            tasksList.add(task)
+                                        }
+                                    }
+                                    val sortedTasks = tasksList.sortedWith(compareBy<Task> { it.dueDate }.thenByDescending { it.priority })
+                                    trySend(sortedTasks).isSuccess
+                                }
                             }
-                            val filteredTasks = tasksList.filter { !it.isCompleted }
-                            val sortedTasks = filteredTasks.sortedWith(compareBy<Task> { it.dueDate }.thenByDescending { it.priority })
-
-                            // Gửi danh sách tasksList qua luồng
-                            trySend(sortedTasks).isSuccess
-                        }
-                        .addOnFailureListener { exception ->
-                            // Xử lý nếu có lỗi xảy ra khi lấy danh sách tasks của môn học
-                            close(exception)
-                        }
+                    }
                 }
             }
-            .addOnFailureListener { exception ->
-                // Xử lý nếu có lỗi xảy ra khi lấy danh sách các môn học
-                close(exception)
-            }
 
-        // Đóng luồng khi không cần thiết nữa
-        awaitClose { }
+        awaitClose {
+            // Hủy lắng nghe khi không cần thiết nữa
+            subjectsListener.remove()
+        }
     }
+
 }

@@ -79,7 +79,7 @@ fun StudyScreen(
     LaunchedEffect(key1 = true) {
         snackbarEventFlow.collectLatest { event ->
             when (event) {
-                SnackbarEvent.NavigateUp -> TODO()
+                SnackbarEvent.NavigateUp -> {}
                 is SnackbarEvent.ShowSnackbar -> {
                     snackbarHostState.showSnackbar(
                         message = event.message,

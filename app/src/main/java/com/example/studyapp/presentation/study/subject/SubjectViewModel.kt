@@ -93,12 +93,6 @@ class SubjectViewModel @Inject constructor(
                 }
             }
             is SubjectScreenEvent.OnTaskIsCompleteChange -> {
-                _state.update { currentState ->
-                    currentState.copy(
-                        upcomingTasks = currentState.upcomingTasks.filter { task -> task.id != event.task.id },
-                        completedTasks = currentState.completedTasks + event.task.copy(isCompleted = !event.task.isCompleted)
-                    )
-                }
                 updateTask(event.task)
             }
 
@@ -214,6 +208,7 @@ class SubjectViewModel @Inject constructor(
                 taskRepository.updateTask(
                     task = task.copy(isCompleted = !task.isCompleted)
                 )
+
                 if (task.isCompleted) {
                     _snackbarEventFlow.emit(
                         SnackbarEvent.ShowSnackbar(message = "Lưu thành nhiệm vụ sắp tới.")
