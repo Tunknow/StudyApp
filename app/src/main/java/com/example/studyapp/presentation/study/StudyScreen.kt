@@ -61,10 +61,9 @@ fun StudyScreen(
 ) {
 
     val viewModel : StudyViewModel = hiltViewModel()
-    val state by viewModel.studyScreenState;
+    val state by viewModel.state.collectAsStateWithLifecycle()
     val onEvent : (StudyScreenEvent) -> Unit = viewModel::onEvent
 
-    val subjects by viewModel.subjects.collectAsStateWithLifecycle()
     val tasks by viewModel.tasks.collectAsStateWithLifecycle()
     val recentSession by viewModel.recentSession.collectAsStateWithLifecycle()
 
@@ -135,7 +134,7 @@ fun StudyScreen(
             }
             item {
                 SubjectCardsSection(
-                    subjectList = subjects,
+                    subjectList = state.subjects,
                     onAddIconClick = {isAddSubjectDialogOpen = true},
                     onSubjectCardClick = { index ->
                         navController.navigate(Screens.SubjectScreenRoute.passSubjectId(index?: "")) },

@@ -1,8 +1,6 @@
 package com.example.studyapp.presentation.study
 
-import android.util.Log
 import androidx.compose.material3.SnackbarDuration
-import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.studyapp.data.repositories.SessionRepository
@@ -21,8 +19,8 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -36,28 +34,20 @@ class StudyViewModel @Inject constructor(
     private val _state = MutableStateFlow(StudyScreenState())
     val state = combine(
         _state,
-        subjectRepository.getTotalSubjectCount(),
-        subjectRepository.getTotalGoalHours(),
         subjectRepository.getAllSubjects(),
         sessionRepository.getTotalSessionsDuration()
-    ) { state, subjectCount, goalHours, subjects, totalSessionDuration ->
+    ) { state, subjects, totalSessionDuration ->
         state.copy(
-            totalSubjectCount = subjectCount,
-            totalGoalStudyHours = goalHours,
+            totalSubjectCount = subjects.size,
+            totalGoalStudyHours = subjects.sumByDouble { it.goalHours.toDouble() }.toFloat(),
             subjects = subjects,
             totalStudiedHours = totalSessionDuration.toHours()
         )
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(stopTimeoutMillis = 5000),
-        initialValue = DashboardState()
+        initialValue = StudyScreenState()
     )
-    val subjects: StateFlow<List<Subject>> = subjectRepository.getAllSubjects()
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5000),
-            initialValue = emptyList()
-        )
 
     val tasks: StateFlow<List<Task>> = taskRepository.getAllUpcomingTasks()
         .stateIn(
@@ -77,71 +67,49 @@ class StudyViewModel @Inject constructor(
     val snackbarEventFlow = _snackbarEventFlow.asSharedFlow()
     fun onEvent(event: StudyScreenEvent) {
         when (event) {
-            StudyScreenEvent.DeleteSession -> {
-                deleteSession()
-            }
-            is StudyScreenEvent.OnDeleteSessionButtonClick -> {
-                studyScreenState.value = studyScreenState.value.copy(
-                    session = event.session
-                )
-                Log.d("SVM log", "session: ${event.session}")
-            }
-            is StudyScreenEvent.OnGoalStudyHoursChange -> {
-                studyScreenState.value = studyScreenState.value.copy(
-                    goalStudyHours = event.hours
-                )
-                Log.d("SVM log", "goalStudyHours: ${event.hours}")
-            }
             is StudyScreenEvent.OnSubjectNameChange -> {
-                studyScreenState.value = studyScreenState.value.copy(
-                    subjectName = event.name
-                )
-                Log.d("SVM log", "subjectName: ${event.name}")
+                _state.update {
+                    it.copy(subjectName = event.name)
+                }
             }
+
+            is StudyScreenEvent.OnGoalStudyHoursChange -> {
+                _state.update {
+                    it.copy(goalStudyHours = event.hours)
+                }
+            }
+
+            is StudyScreenEvent.OnDeleteSessionButtonClick -> {
+                _state.update {
+                    it.copy(session = event.session)
+                }
+            }
+
+            StudyScreenEvent.SaveSubject -> saveSubject()
+            StudyScreenEvent.DeleteSession -> deleteSession()
             is StudyScreenEvent.OnTaskIsCompleteChange -> {
                 updateTask(event.task)
             }
-            StudyScreenEvent.SaveSubject -> {
-                saveSubject()
-            }
         }
-        updateUI()
     }
 
     private fun deleteSession() {
         viewModelScope.launch {
             try {
-                studyScreenState.value.session?.let {
+                state.value.session?.let {
                     sessionRepository.deleteSession(it)
                     _snackbarEventFlow.emit(
-                        SnackbarEvent.ShowSnackbar(message = "Xóa phiên học thành công")
+                        SnackbarEvent.ShowSnackbar(message = "Session deleted successfully")
                     )
                 }
             } catch (e: Exception) {
                 _snackbarEventFlow.emit(
                     SnackbarEvent.ShowSnackbar(
-                        message = "Không thể xóa phiên. ${e.message}",
+                        message = "Couldn't delete session. ${e.message}",
                         duration = SnackbarDuration.Long
                     )
                 )
             }
-        }
-    }
-
-    private fun updateUI() {
-        viewModelScope.launch {
-            val subjects = subjectRepository.getAllSubjects().first()
-            val sessions = sessionRepository.getAllSessions().first()
-            val tasks = taskRepository.getAllUpcomingTasks().first()
-            Log.d("SVM log", "sessions: $sessions")
-            val totalStudiedHours = sessions.sumOf { it.duration }
-
-            studyScreenState.value = studyScreenState.value.copy(
-                subjects = subjects,
-                totalSubjectCount = subjects.size,
-                totalGoalStudyHours = subjects.sumByDouble { it.goalHours.toDouble() }.toFloat(),
-                totalStudiedHours = totalStudiedHours.toHours(),
-            )
         }
     }
 
@@ -171,25 +139,28 @@ class StudyViewModel @Inject constructor(
             try {
                 subjectRepository.insertSubject(
                     subject = Subject(
-                        name = studyScreenState.value.subjectName,
-                        goalHours = studyScreenState.value.goalStudyHours.toFloatOrNull() ?: 2f,
-                        uid = FirebaseAuth.getInstance().currentUser?.uid ?: "",
+                        uid = FirebaseAuth.getInstance().currentUser!!.uid,
+                        name = state.value.subjectName,
+                        goalHours = state.value.goalStudyHours.toFloatOrNull() ?: 1f,
                     )
                 )
-                studyScreenState.value = studyScreenState.value.copy(
-                    subjectName = "",
-                    goalStudyHours = ""
+                _state.update {
+                    it.copy(
+                        subjectName = "",
+                        goalStudyHours = ""
+                    )
+                }
+                _snackbarEventFlow.emit(
+                    SnackbarEvent.ShowSnackbar(message = "Subject saved successfully")
                 )
-                _snackbarEventFlow.emit(SnackbarEvent.ShowSnackbar("Lưu thông tin môn học thành công"))
             } catch (e: Exception) {
                 _snackbarEventFlow.emit(
                     SnackbarEvent.ShowSnackbar(
-                        "Không thể lưu môn học",
-                        SnackbarDuration.Long
-                   )
+                        message = "Couldn't save subject. ${e.message}",
+                        duration = SnackbarDuration.Long
+                    )
                 )
             }
-            updateUI()
         }
     }
 
