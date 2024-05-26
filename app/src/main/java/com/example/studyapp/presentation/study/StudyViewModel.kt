@@ -16,9 +16,11 @@ import com.example.studyapp.util.toHours
 import com.google.firebase.auth.FirebaseAuth
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -31,12 +33,25 @@ class StudyViewModel @Inject constructor(
     private val taskRepository: TaskRepository
 ) : ViewModel() {
 
-    val studyScreenState = mutableStateOf(StudyScreenState())
-
-//    Khoi tao UI
-    init {
-        updateUI()
-    }
+    private val _state = MutableStateFlow(StudyScreenState())
+    val state = combine(
+        _state,
+        subjectRepository.getTotalSubjectCount(),
+        subjectRepository.getTotalGoalHours(),
+        subjectRepository.getAllSubjects(),
+        sessionRepository.getTotalSessionsDuration()
+    ) { state, subjectCount, goalHours, subjects, totalSessionDuration ->
+        state.copy(
+            totalSubjectCount = subjectCount,
+            totalGoalStudyHours = goalHours,
+            subjects = subjects,
+            totalStudiedHours = totalSessionDuration.toHours()
+        )
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(stopTimeoutMillis = 5000),
+        initialValue = DashboardState()
+    )
     val subjects: StateFlow<List<Subject>> = subjectRepository.getAllSubjects()
         .stateIn(
             scope = viewModelScope,
@@ -117,6 +132,7 @@ class StudyViewModel @Inject constructor(
         viewModelScope.launch {
             val subjects = subjectRepository.getAllSubjects().first()
             val sessions = sessionRepository.getAllSessions().first()
+            val tasks = taskRepository.getAllUpcomingTasks().first()
             Log.d("SVM log", "sessions: $sessions")
             val totalStudiedHours = sessions.sumOf { it.duration }
 
@@ -124,7 +140,7 @@ class StudyViewModel @Inject constructor(
                 subjects = subjects,
                 totalSubjectCount = subjects.size,
                 totalGoalStudyHours = subjects.sumByDouble { it.goalHours.toDouble() }.toFloat(),
-                totalStudiedHours = totalStudiedHours.toHours()
+                totalStudiedHours = totalStudiedHours.toHours(),
             )
         }
     }
