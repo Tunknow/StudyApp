@@ -6,7 +6,6 @@ import com.example.studyapp.di.IoDispatcher
 import com.example.studyapp.domain.model.Session
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.firestore.Query
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.channels.awaitClose
@@ -42,126 +41,140 @@ class SessionRepositoryImpl @Inject constructor(
             }
     }
 
-    override fun getAllSessions(): Flow<List<Session>> = callbackFlow {
-        val sessionsMap = mutableMapOf<String, List<Session>>() // Map lưu trữ danh sách các phiên cho mỗi môn học
-        val sessionListeners = mutableMapOf<String, ListenerRegistration>() // Map lưu trữ các listener cho mỗi môn học
+    override fun getAllSessions(): Flow<List<Session>> = callbackFlow {val sessionsList = mutableListOf<Session>() // Danh sách các phiên
 
-        // Lắng nghe sự thay đổi của tất cả các môn học của người dùng
-        val subjectsListener = studyAppDB.collection("users").document(userId)
+        // Lấy danh sách tất cả các môn học của người dùng từ Firestore
+        studyAppDB.collection("users").document(userId)
             .collection("subjects")
-            .addSnapshotListener { subjectsQuerySnapshot, subjectsException ->
-                subjectsException?.let { close(it) } // Đóng luồng nếu có lỗi xảy ra khi lấy danh sách các môn học
-                subjectsQuerySnapshot?.let { subjectsSnapshot ->
-                    subjectsSnapshot.documents.forEach { subjectDocument ->
-                        val subjectId = subjectDocument.id
+            .get()
+            .addOnSuccessListener { subjectsQuerySnapshot ->
+                val pendingRequests = AtomicInteger(subjectsQuerySnapshot.size())
+                // Duyệt qua từng môn học
+                subjectsQuerySnapshot.documents.forEach { subjectDocument ->
+                    val subjectId = subjectDocument.id
+                    val subjectName = subjectDocument.getString("name") ?: ""
 
-                        // Lắng nghe sự thay đổi của tất cả các phiên trong mỗi môn học
-                        val sessionsListener = studyAppDB.collection("users").document(userId)
-                            .collection("subjects").document(subjectId)
-                            .collection("sessions")
-                            .addSnapshotListener { sessionsQuerySnapshot, sessionsException ->
-                                sessionsException?.let { close(it) } // Đóng luồng nếu có lỗi xảy ra khi lấy danh sách các phiên
-                                sessionsQuerySnapshot?.let { sessionsSnapshot ->
-                                    val sessionsList = mutableListOf<Session>()
+                    // Lấy danh sách các phiên gần đây của môn học hiện tại từ Firestore
+                    studyAppDB.collection("users").document(userId)
+                        .collection("subjects").document(subjectId)
+                        .collection("sessions")
+                        .get()
+                        .addOnSuccessListener { sessionsQuerySnapshot ->
+                            // Duyệt qua từng phiên của môn học hiện tại
+                            sessionsQuerySnapshot.documents.forEach { sessionDocument ->
+                                // Đọc dữ liệu của phiên từ Firestore
+                                val sessionId = sessionDocument.id
+                                val sessionSid = subjectId
+                                val sessionDate = sessionDocument.getLong("date") ?: 0
+                                val sessionDuration = sessionDocument.getLong("duration") ?: 0
 
-                                    sessionsSnapshot.documents.forEach { sessionDocument ->
-                                        // Đọc dữ liệu của phiên từ Firestore
-                                        val sessionId = sessionDocument.id
-                                        val sessionDate = sessionDocument.getLong("date") ?: 0
-                                        val sessionDuration = sessionDocument.getLong("duration") ?: 0
-
-                                        // Tạo đối tượng Session và thêm vào danh sách sessionsList
-                                        val session = Session(
-                                            sessionId,
-                                            subjectId,
-                                            "", // Tên môn học sẽ được cập nhật sau
-                                            sessionDate,
-                                            sessionDuration
-                                        )
-                                        sessionsList.add(session)
-                                    }
-
-                                    // Lưu danh sách phiên của môn học vào map
-                                    sessionsMap[subjectId] = sessionsList
-
-                                    // Gộp danh sách phiên của tất cả các môn học và gửi qua flow
-                                    val allSessions = sessionsMap.values.flatten()
-                                    trySend(allSessions).isSuccess
-                                }
+                                // Tạo đối tượng Session và thêm vào danh sách sessionsList
+                                val session = Session(
+                                    sessionId,
+                                    sessionSid,
+                                    subjectName, // Thêm tên môn học vào đây
+                                    sessionDate,
+                                    sessionDuration
+                                )
+                                sessionsList.add(session)
+                            }
+                            if (pendingRequests.decrementAndGet() == 0) {
+                                // Nếu không còn yêu cầu đang chờ, gửi danh sách các phiên qua luồng
+                                Log.d("SRI log", "getAllSessions: $sessionsList")
+                                trySend(sessionsList).isSuccess
                             }
 
-                        // Thêm listener vào map để quản lý
-                        sessionListeners[subjectId]?.remove()
-                        sessionListeners[subjectId] = sessionsListener
-                    }
+                        }
+                        .addOnFailureListener { exception ->
+                            // Xử lý nếu có lỗi xảy ra khi lấy danh sách phiên của môn học
+//                            Log.d("SRI log", "getRecentFiveSessions: $exception")
+                            close(exception)
+                        }
                 }
+
+            }
+            .addOnFailureListener { exception ->
+                // Xử lý nếu có lỗi xảy ra khi lấy danh sách các môn học
+                close(exception)
             }
 
-        awaitClose {
-            // Hủy tất cả các listener khi không cần thiết nữa
-            subjectsListener.remove()
-            sessionListeners.forEach { (_, listener) -> listener.remove() }
-            sessionListeners.clear()
-        }
+        // Gửi danh sách các phiên qua luồng khi đã lấy được tất cả
+
+//        trySend(sessionsList).isSuccess
+//        Log.d("SRI log", "getRecentFiveSessions: $sessionsList")
+        // Đóng luồng khi không cần thiết nữa
+        awaitClose { }
     }
+
 
 
 
     override fun getRecentFiveSessions(): Flow<List<Session>> = callbackFlow {
         val sessionsList = mutableListOf<Session>() // Danh sách các phiên
 
-        // Lắng nghe sự thay đổi của tất cả các môn học của người dùng
-        val subjectsListener = studyAppDB.collection("users").document(userId)
+        // Lấy danh sách tất cả các môn học của người dùng từ Firestore
+        studyAppDB.collection("users").document(userId)
             .collection("subjects")
-            .addSnapshotListener { subjectsQuerySnapshot, subjectsException ->
-                subjectsException?.let { close(it) } // Đóng luồng nếu có lỗi xảy ra khi lấy danh sách các môn học
-                subjectsQuerySnapshot?.let { subjectsSnapshot ->
-                    val pendingRequests = AtomicInteger(subjectsSnapshot.size())
-                    subjectsSnapshot.documents.forEach { subjectDocument ->
-                        val subjectId = subjectDocument.id
-                        val subjectName = subjectDocument.getString("name") ?: ""
+            .get()
+            .addOnSuccessListener { subjectsQuerySnapshot ->
+                val pendingRequests = AtomicInteger(subjectsQuerySnapshot.size())
+                // Duyệt qua từng môn học
+                subjectsQuerySnapshot.documents.forEach { subjectDocument ->
+                    val subjectId = subjectDocument.id
+                    val subjectName = subjectDocument.getString("name") ?: ""
 
-                        // Lắng nghe sự thay đổi của các phiên gần đây của mỗi môn học
-                        val sessionsListener = studyAppDB.collection("users").document(userId)
-                            .collection("subjects").document(subjectId)
-                            .collection("sessions")
-                            .orderBy("date", Query.Direction.DESCENDING)
-                            .limit(5) // Giới hạn số lượng phiên
-                            .addSnapshotListener { sessionsQuerySnapshot, sessionsException ->
-                                sessionsException?.let { close(it) } // Đóng luồng nếu có lỗi xảy ra khi lấy danh sách phiên
-                                sessionsQuerySnapshot?.let { sessionsSnapshot ->
-                                    sessionsList.clear() // Xóa danh sách cũ để cập nhật dữ liệu mới
-                                    sessionsSnapshot.documents.forEach { sessionDocument ->
-                                        // Đọc dữ liệu của phiên từ Firestore
-                                        val sessionId = sessionDocument.id
-                                        val sessionSid = subjectId
-                                        val sessionDate = sessionDocument.getLong("date") ?: 0
-                                        val sessionDuration = sessionDocument.getLong("duration") ?: 0
+                    // Lấy danh sách các phiên gần đây của môn học hiện tại từ Firestore
+                    studyAppDB.collection("users").document(userId)
+                        .collection("subjects").document(subjectId)
+                        .collection("sessions")
+                        .orderBy("date", Query.Direction.DESCENDING)
+                        .limit(5) // Giới hạn số lượng phiên
+                        .get()
+                        .addOnSuccessListener { sessionsQuerySnapshot ->
+                            // Duyệt qua từng phiên của môn học hiện tại
+                            sessionsQuerySnapshot.documents.forEach { sessionDocument ->
+                                // Đọc dữ liệu của phiên từ Firestore
+                                val sessionId = sessionDocument.id
+                                val sessionSid = subjectId
+                                val sessionDate = sessionDocument.getLong("date") ?: 0
+                                val sessionDuration = sessionDocument.getLong("duration") ?: 0
 
-                                        // Tạo đối tượng Session và thêm vào danh sách sessionsList
-                                        val session = Session(
-                                            sessionId,
-                                            sessionSid,
-                                            subjectName, // Thêm tên môn học vào đây
-                                            sessionDate,
-                                            sessionDuration
-                                        )
-                                        sessionsList.add(session)
-                                    }
-                                    if (pendingRequests.decrementAndGet() == 0) {
-                                        // Nếu không còn yêu cầu đang chờ, gửi danh sách các phiên qua luồng
-                                        trySend(sessionsList).isSuccess
-                                    }
-                                }
+                                // Tạo đối tượng Session và thêm vào danh sách sessionsList
+                                val session = Session(
+                                    sessionId,
+                                    sessionSid,
+                                    subjectName, // Thêm tên môn học vào đây
+                                    sessionDate,
+                                    sessionDuration
+                                )
+                                sessionsList.add(session)
                             }
-                    }
+                            if (pendingRequests.decrementAndGet() == 0) {
+                                // Nếu không còn yêu cầu đang chờ, gửi danh sách các phiên qua luồng
+                                Log.d("SRI log", "getRecentFiveSessions: $sessionsList")
+                                trySend(sessionsList).isSuccess
+                            }
+
+                        }
+                        .addOnFailureListener { exception ->
+                            // Xử lý nếu có lỗi xảy ra khi lấy danh sách phiên của môn học
+//                            Log.d("SRI log", "getRecentFiveSessions: $exception")
+                            close(exception)
+                        }
                 }
+
+            }
+            .addOnFailureListener { exception ->
+                // Xử lý nếu có lỗi xảy ra khi lấy danh sách các môn học
+                close(exception)
             }
 
-        awaitClose {
-            // Hủy lắng nghe khi không cần thiết nữa
-            subjectsListener.remove()
-        }
+        // Gửi danh sách các phiên qua luồng khi đã lấy được tất cả
+
+//        trySend(sessionsList).isSuccess
+//        Log.d("SRI log", "getRecentFiveSessions: $sessionsList")
+        // Đóng luồng khi không cần thiết nữa
+        awaitClose { }
     }
 
 
@@ -171,42 +184,43 @@ class SessionRepositoryImpl @Inject constructor(
     override fun getRecentTenSessionsForSubject(subjectId: String): Flow<List<Session>> = callbackFlow {
         val sessionsList = mutableListOf<Session>() // Danh sách các phiên
 
-        // Lắng nghe sự thay đổi của các phiên gần đây của môn học
-        val sessionsListener = studyAppDB.collection("users").document(userId)
+        // Lấy danh sách các phiên gần đây của môn học từ Firestore
+        studyAppDB.collection("users").document(userId)
             .collection("subjects").document(subjectId)
             .collection("sessions")
             .orderBy("date", Query.Direction.DESCENDING)
             .limit(10) // Giới hạn số lượng phiên
-            .addSnapshotListener { sessionsQuerySnapshot, sessionsException ->
-                sessionsException?.let { close(it) } // Đóng luồng nếu có lỗi xảy ra khi lấy danh sách phiên
-                sessionsQuerySnapshot?.let { sessionsSnapshot ->
-                    sessionsList.clear() // Xóa danh sách cũ để cập nhật dữ liệu mới
-                    sessionsSnapshot.documents.forEach { sessionDocument ->
-                        // Đọc dữ liệu của phiên từ Firestore
-                        val sessionId = sessionDocument.id
-                        val sessionSid = subjectId
-                        val sessionDate = sessionDocument.getLong("date") ?: 0
-                        val sessionDuration = sessionDocument.getLong("duration") ?: 0
+            .get()
+            .addOnSuccessListener { sessionsQuerySnapshot ->
+                // Duyệt qua từng phiên của môn học
+                sessionsQuerySnapshot.documents.forEach { sessionDocument ->
+                    // Đọc dữ liệu của phiên từ Firestore
+                    val sessionId = sessionDocument.id
+                    val sessionSid = subjectId
+                    val sessionDate = sessionDocument.getLong("date") ?: 0
+                    val sessionDuration = sessionDocument.getLong("duration") ?: 0
 
-                        // Tạo đối tượng Session và thêm vào danh sách sessionsList
-                        val session = Session(
-                            sessionId,
-                            sessionSid,
-                            "", // Tên môn học sẽ được cập nhật sau
-                            sessionDate,
-                            sessionDuration
-                        )
-                        sessionsList.add(session)
-                    }
-                    trySend(sessionsList).isSuccess
+                    // Tạo đối tượng Session và thêm vào danh sách sessionsList
+                    val session = Session(
+                        sessionId,
+                        sessionSid,
+                        "", // Tên môn học sẽ được cập nhật sau
+                        sessionDate,
+                        sessionDuration
+                    )
+                    sessionsList.add(session)
                 }
+                trySend(sessionsList).isSuccess
+            }
+            .addOnFailureListener { exception ->
+                // Xử lý nếu có lỗi xảy ra khi lấy danh sách phiên của môn học
+                close(exception)
             }
 
-        awaitClose {
-            // Hủy lắng nghe khi không cần thiết nữa
-            sessionsListener.remove()
-        }
+        // Đóng luồng khi không cần thiết nữa
+        awaitClose { }
     }
+
 
 
     override fun getTotalSessionsDuration(): Flow<Long> = callbackFlow {
