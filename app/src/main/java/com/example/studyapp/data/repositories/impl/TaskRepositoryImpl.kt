@@ -6,6 +6,7 @@ import com.example.studyapp.di.IoDispatcher
 import com.example.studyapp.domain.model.Task
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.ListenerRegistration
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -379,39 +380,47 @@ override fun getUpcomingTasksForSubject(subjectId: String): Flow<List<Task>> = c
 //        awaitClose { }
 //    }
     override fun getAllUpcomingTasks(): Flow<List<Task>> = callbackFlow {
-        val tasksList = mutableListOf<Task>()
+        val tasksMap = mutableMapOf<String, List<Task>>()
+        val taskListeners = mutableMapOf<String, ListenerRegistration>()
 
         // Lắng nghe sự thay đổi của tất cả các môn học của người dùng
         val subjectsListener = studyAppDB.collection("users").document(userId)
             .collection("subjects")
             .addSnapshotListener { subjectsQuerySnapshot, subjectsException ->
-                subjectsException?.let { close(it) } // Đóng luồng nếu có lỗi xảy ra khi lấy danh sách các môn học
+                if (subjectsException != null) {
+                    close(subjectsException) // Đóng luồng nếu có lỗi xảy ra khi lấy danh sách các môn học
+                    return@addSnapshotListener
+                }
+
                 subjectsQuerySnapshot?.let { subjectsSnapshot ->
                     subjectsSnapshot.documents.forEach { subjectDocument ->
                         val subjectId = subjectDocument.id
-                        val subjectName = subjectDocument.getString("name") ?: ""
 
                         // Lắng nghe sự thay đổi của tất cả các task trong mỗi môn học
                         val tasksListener = studyAppDB.collection("users").document(userId)
                             .collection("subjects").document(subjectId)
                             .collection("tasks")
                             .addSnapshotListener { tasksQuerySnapshot, tasksException ->
-                                tasksException?.let { close(it) } // Đóng luồng nếu có lỗi xảy ra khi lấy danh sách các task
+                                if (tasksException != null) {
+                                    close(tasksException) // Đóng luồng nếu có lỗi xảy ra khi lấy danh sách các task
+                                    return@addSnapshotListener
+                                }
+
                                 tasksQuerySnapshot?.let { tasksSnapshot ->
-                                    tasksList.clear() // Xóa danh sách cũ để cập nhật dữ liệu mới
+                                    val tasksList = mutableListOf<Task>()
+
                                     tasksSnapshot.documents.forEach { taskDocument ->
                                         val taskId = taskDocument.id
-                                        val taskSid = subjectId
                                         val taskTitle = taskDocument.getString("title") ?: ""
                                         val taskDescription = taskDocument.getString("description") ?: ""
                                         val taskDueDate = taskDocument.getLong("dueDate") ?: 0
                                         val taskPriority = taskDocument.getLong("priority")?.toInt() ?: 0
                                         val taskCompleted = taskDocument.getBoolean("isCompleted") ?: false
-                                        val taskRelatedToSubject = subjectName
+                                        val taskRelatedToSubject = subjectDocument.getString("name") ?: ""
 
                                         val task = Task(
                                             taskId,
-                                            taskSid,
+                                            subjectId,
                                             taskTitle,
                                             taskDescription,
                                             taskDueDate,
@@ -423,18 +432,31 @@ override fun getUpcomingTasksForSubject(subjectId: String): Flow<List<Task>> = c
                                             tasksList.add(task)
                                         }
                                     }
-                                    val sortedTasks = tasksList.sortedWith(compareBy<Task> { it.dueDate }.thenByDescending { it.priority })
-                                    trySend(sortedTasks).isSuccess
+
+                                    // Lưu danh sách task của môn học vào map
+                                    tasksMap[subjectId] = tasksList
+
+                                    // Gộp danh sách task của tất cả các môn học và gửi qua flow
+                                    val allTasks = tasksMap.values.flatten().sortedWith(compareBy<Task> { it.dueDate }.thenByDescending { it.priority })
+                                    trySend(allTasks).isSuccess
                                 }
                             }
+
+                        // Thêm listener vào map để quản lý
+                        taskListeners[subjectId]?.remove()
+                        taskListeners[subjectId] = tasksListener
                     }
                 }
             }
 
         awaitClose {
-            // Hủy lắng nghe khi không cần thiết nữa
+            // Hủy tất cả các listener khi không cần thiết nữa
             subjectsListener.remove()
+            taskListeners.forEach { (_, listener) -> listener.remove() }
+            taskListeners.clear()
         }
     }
+
+
 
 }

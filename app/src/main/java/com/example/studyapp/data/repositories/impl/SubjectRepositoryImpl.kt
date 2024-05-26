@@ -166,31 +166,30 @@ class SubjectRepositoryImpl @Inject constructor(
 
 
     override fun getAllSubjects(): Flow<List<Subject>> = callbackFlow {
-        val subscription = studyAppDB.collection("users").document(userId)
+        if (userId == null) {
+            close(Exception("User ID is null"))
+            return@callbackFlow
+        }
+
+        val subscription = studyAppDB.collection("users")
+            .document(userId)
             .collection("subjects")
             .addSnapshotListener { querySnapshot, exception ->
                 if (exception != null) {
-                    close(exception) // Đóng flow và trả về exception nếu có lỗi
-                    Log.d("SRI log", "cannot get subject")
+                    close(exception)
                     return@addSnapshotListener
                 }
 
-                val subjectsList: MutableList<Subject> = mutableListOf()
-                querySnapshot?.forEach { document ->
+                val subjectsList = querySnapshot?.documents?.map { document ->
                     val id = document.id
                     val name = document.getString("name") ?: ""
                     val goalHours = document.getDouble("goalHours")?.toFloat() ?: 0f
-                    val uid = userId
+                    Subject(id, name, goalHours, userId)
+                } ?: emptyList()
 
-                    val subject = Subject(id, name, goalHours, uid)
-                    subjectsList.add(subject)
-                }
-                // Gửi danh sách các môn học mới qua flow
                 trySend(subjectsList).isSuccess
-                Log.d("SRI log", "subjectsList: $subjectsList")
             }
 
-        // Hủy đăng ký khi flow bị hủy
         awaitClose { subscription.remove() }
     }
 

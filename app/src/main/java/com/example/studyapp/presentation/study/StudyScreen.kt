@@ -64,9 +64,6 @@ fun StudyScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val onEvent : (StudyScreenEvent) -> Unit = viewModel::onEvent
 
-    val tasks by viewModel.tasks.collectAsStateWithLifecycle()
-    val recentSession by viewModel.recentSession.collectAsStateWithLifecycle()
-
     var isAddSubjectDialogOpen by rememberSaveable { mutableStateOf(false) }
     var isDeleteSessionDialogOpen by rememberSaveable { mutableStateOf(false) }
 
@@ -161,7 +158,7 @@ fun StudyScreen(
             tasksList(
                 sectionTitle = "NHIỆM VỤ SẮP TỚI",
                 emptyListText = "Không có nhiệm vụ nào!",
-                tasks = tasks,
+                tasks = state.tasks,
                 onCheckBoxClick = {onEvent(StudyScreenEvent.OnTaskIsCompleteChange(it))},
                 onTaskCardClick = {task ->
                     navController.navigate(Screens.TaskScreenRoute.passTaskId(taskId = task.id, subjectId = task.sid))
@@ -173,7 +170,7 @@ fun StudyScreen(
             studySessionsList(
                 sectionTitle = "PHIÊN HỌC GẦN ĐÂY",
                 emptyListText = "Bạn không có phiên học tập nào gần đây.",
-                sessions = recentSession,
+                sessions = state.recentSessions,
                 onDeleteIconClick = {
                     onEvent(StudyScreenEvent.OnDeleteSessionButtonClick(it))
                     isDeleteSessionDialogOpen = true

@@ -1,12 +1,12 @@
 package com.example.studyapp.presentation.study
 
+import android.util.Log
 import androidx.compose.material3.SnackbarDuration
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.studyapp.data.repositories.SessionRepository
 import com.example.studyapp.data.repositories.SubjectRepository
 import com.example.studyapp.data.repositories.TaskRepository
-import com.example.studyapp.domain.model.Session
 import com.example.studyapp.domain.model.Subject
 import com.example.studyapp.domain.model.Task
 import com.example.studyapp.util.SnackbarEvent
@@ -16,7 +16,6 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
@@ -35,33 +34,24 @@ class StudyViewModel @Inject constructor(
     val state = combine(
         _state,
         subjectRepository.getAllSubjects(),
-        sessionRepository.getTotalSessionsDuration()
-    ) { state, subjects, totalSessionDuration ->
+        sessionRepository.getTotalSessionsDuration(),
+        taskRepository.getAllUpcomingTasks(),
+        sessionRepository.getRecentFiveSessions()
+    ) { state, subjects, totalSessionDuration, upcomingtasks, recentSessions  ->
+        Log.d("StudyViewModel", "Subjects: $subjects, TotalSessionDuration: $totalSessionDuration")
         state.copy(
             totalSubjectCount = subjects.size,
             totalGoalStudyHours = subjects.sumByDouble { it.goalHours.toDouble() }.toFloat(),
             subjects = subjects,
-            totalStudiedHours = totalSessionDuration.toHours()
+            totalStudiedHours = totalSessionDuration.toHours(),
+            tasks = upcomingtasks,
+            recentSessions = recentSessions
         )
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(stopTimeoutMillis = 5000),
         initialValue = StudyScreenState()
     )
-
-    val tasks: StateFlow<List<Task>> = taskRepository.getAllUpcomingTasks()
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5000),
-            initialValue = emptyList()
-        )
-
-    val recentSession: StateFlow<List<Session>> = sessionRepository.getRecentFiveSessions()
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5000),
-            initialValue = emptyList()
-        )
 
     private val _snackbarEventFlow = MutableSharedFlow<SnackbarEvent>()
     val snackbarEventFlow = _snackbarEventFlow.asSharedFlow()
@@ -99,13 +89,13 @@ class StudyViewModel @Inject constructor(
                 state.value.session?.let {
                     sessionRepository.deleteSession(it)
                     _snackbarEventFlow.emit(
-                        SnackbarEvent.ShowSnackbar(message = "Session deleted successfully")
+                        SnackbarEvent.ShowSnackbar(message = "Xóa phiên học thành công")
                     )
                 }
             } catch (e: Exception) {
                 _snackbarEventFlow.emit(
                     SnackbarEvent.ShowSnackbar(
-                        message = "Couldn't delete session. ${e.message}",
+                        message = "Không thể thực hiện. ${e.message}",
                         duration = SnackbarDuration.Long
                     )
                 )
@@ -151,12 +141,12 @@ class StudyViewModel @Inject constructor(
                     )
                 }
                 _snackbarEventFlow.emit(
-                    SnackbarEvent.ShowSnackbar(message = "Subject saved successfully")
+                    SnackbarEvent.ShowSnackbar(message = "Môn học đã được lưu thành công")
                 )
             } catch (e: Exception) {
                 _snackbarEventFlow.emit(
                     SnackbarEvent.ShowSnackbar(
-                        message = "Couldn't save subject. ${e.message}",
+                        message = "Không thể thực hiện. ${e.message}",
                         duration = SnackbarDuration.Long
                     )
                 )
