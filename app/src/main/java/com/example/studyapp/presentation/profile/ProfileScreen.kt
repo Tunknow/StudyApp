@@ -102,6 +102,7 @@ fun ProfileScreen(
                             .padding(12.dp)) {
                             UserInfoCard(info = "Email", infoDetail = uiState.profile?.email ?: "Không xác định")
                             UserInfoCard(info = "Ngày sinh", infoDetail = uiState.profile?.dob.changeMillisToDateString()  ?: "Không xác định")
+                            UserInfoCard(info = "Học tại", infoDetail = uiState.profile?.school ?: "Không xác định")
                         }
 
                     }

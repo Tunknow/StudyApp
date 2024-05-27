@@ -19,6 +19,7 @@ class ProfileRepositoryImpl @Inject constructor(
 ) : ProfileRepository {
 
     private val userId = FirebaseAuth.getInstance().currentUser!!.uid
+    private val email = FirebaseAuth.getInstance().currentUser!!.email
     override suspend fun getUserProfile(userId: String): Result<ProfileUser> {
         return try {
             withContext(ioDispatcher) {
@@ -34,8 +35,9 @@ class ProfileRepositoryImpl @Inject constructor(
                     ProfileUser(
                         id = fetchingProfileUser!!.id,
                         fullname = fetchingProfileUser.getString("fullname")!!,
-                        email = fetchingProfileUser.getString("email")!!,
-                        dob = fetchingProfileUser.getLong("dob")!!
+                        email = email!!,
+                        dob = fetchingProfileUser.getLong("dob")!!,
+                        school = fetchingProfileUser.getString("studyAt")!!
                     )
                 )
             }
@@ -49,8 +51,9 @@ class ProfileRepositoryImpl @Inject constructor(
             withContext(ioDispatcher) {
                 val profileUpdate: Map<String, Any> = hashMapOf(
                     "fullname" to profileUser.fullname,
-                    "email" to profileUser.email,
-                    "dob" to profileUser.dob
+                    "email" to email!!,
+                    "dob" to profileUser.dob!!,
+                    "studyAt" to profileUser.school,
                 )
 
                 val addProfile = withTimeoutOrNull(10000L) {

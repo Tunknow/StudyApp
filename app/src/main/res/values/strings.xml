@@ -17,4 +17,8 @@
     <string name="or">Or</string>
     <string name="go_to_login">Đã có tài khoản? Đăng nhập</string>
     <string name="forgot_password">Quên mật khẩu?</string>
+    <string name="update_profile">Thông tin</string>
+    <string name="full_name">Họ tên</string>
+    <string name="study_at">Trường học</string>
+    <string name="update_profile_btn">Cập nhật</string>
 </resources>

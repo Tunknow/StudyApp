@@ -4,5 +4,6 @@ data class ProfileUser(
     val id: String = "",
     val fullname: String = "",
     val email: String = "",
-    val dob: Long = 0L,
+    val dob: Long? = 0L,
+    val school: String = "",
 )
