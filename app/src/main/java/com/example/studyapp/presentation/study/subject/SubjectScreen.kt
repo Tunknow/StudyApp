@@ -135,7 +135,7 @@ fun SubjectScreen(
         topBar = {
             SubjectScreenTopBar(
                 title = state.subjectName,
-                onBackButtonClick = {navController.navigateUp()},
+                onBackButtonClick = {navController.navigate(Screens.StudyScreenRoute.route)},
                 onDeleteButtonClick = { isDeleteSubjectDialogOpen = true },
                 onEditButtonClick = { isEditSubjectDialogOpen = true},
                 scrollBehavior = scrollBehavior

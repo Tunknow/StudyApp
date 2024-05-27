@@ -53,6 +53,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
 import com.example.studyapp.di.TimerServiceHolder
+import com.example.studyapp.presentation.navigation.Screens
 import com.example.studyapp.presentation.study.components.DeleteDiaglog
 import com.example.studyapp.presentation.study.components.SubjectListBottomSheet
 import com.example.studyapp.presentation.study.components.studySessionsList
@@ -144,7 +145,7 @@ fun SessionScreen(
     Scaffold(
         topBar = {
             SessionScreenTopBar(
-                onBackButtonClick = {navController.navigateUp()}
+                onBackButtonClick = {navController.navigate(Screens.StudyScreenRoute.route)}
             )
         },
         snackbarHost = {SnackbarHost(hostState = snackbarHostState)}
