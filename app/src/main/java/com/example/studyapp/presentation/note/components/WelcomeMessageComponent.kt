@@ -18,11 +18,6 @@ fun WelcomeMessageComponent() {
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Text(
-            text = "Chào mừng quay trở lại👋,",
-            fontSize = 18.sp,
-        )
-
-        Text(
             text = "Ghi chú hôm nay",
             fontSize = 22.sp,
             fontWeight = FontWeight.Bold,

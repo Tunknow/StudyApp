@@ -126,13 +126,13 @@ fun NoteScreen() {
                         Icon(
                             Icons.Rounded.AddCircle,
                             contentDescription = "Add Task",
-                            tint = Color.White,
+                            tint = Color.Black,
                         )
                     },
                     text = {
                         Text(
                             text = "Thêm ghi chú",
-                            color = Color.White,
+                            color = Color.Black,
                         )
                     },
                     onClick = {
@@ -141,7 +141,6 @@ fun NoteScreen() {
                         )
                     },
                     modifier = Modifier.padding(horizontal = 12.dp),
-                    containerColor = Color.Black,
                     elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 8.dp),
                 )
             }
