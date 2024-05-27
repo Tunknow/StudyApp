@@ -48,7 +48,7 @@ class SubjectViewModel @Inject constructor(
             completedTasks = completedTask,
             recentSessions = recentSessions,
             studiedHours = totalSessionsDuration.toHours(),
-            progress = (totalSessionsDuration.toHours() / state.goalStudyHours.toFloatOrNull()!!).coerceIn(0f, 1f)
+            progress = (totalSessionsDuration.toHours() / (state.goalStudyHours.toFloatOrNull() ?: 1f)).coerceIn(0f, 1f)
         )
     }.stateIn(
         scope = viewModelScope,
@@ -211,11 +211,11 @@ class SubjectViewModel @Inject constructor(
 
                 if (task.isCompleted) {
                     _snackbarEventFlow.emit(
-                        SnackbarEvent.ShowSnackbar(message = "Lưu thành nhiệm vụ sắp tới.")
+                        SnackbarEvent.ShowSnackbar(message = "Đánh dấu nhiệm vụ chưa hoàn thành")
                     )
                 } else {
                     _snackbarEventFlow.emit(
-                        SnackbarEvent.ShowSnackbar(message = "Lưu thành nhiệm vụ hoàn thành.")
+                        SnackbarEvent.ShowSnackbar(message = "Đánh dấu nhiệm vụ đã hoàn thành")
                     )
                 }
             } catch (e: Exception) {
